@@ -19,14 +19,20 @@ import pandas as pd
 import streamlit as st
 
 from dashboard.loading import (
+    METRICS_PER_ROW,
     Artifact,
+    Metric,
     Section,
     SectionStatus,
     disclosure_notes,
     discover_sections,
     find_model_comparison,
-    format_metric_value,
+    format_metric_display,
+    is_numeric_metric,
     load_table,
+    metric_label,
+    metric_rows,
+    metrics_table,
     section_label,
 )
 from nids import paths
@@ -55,17 +61,55 @@ def _render_status_banner(section: Section) -> None:
         st.error(detail)
 
 
+def _render_metric_card(metric: Metric) -> None:
+    """Render one metric inside its column: an `st.metric` card, or a text badge.
+
+    Numeric metrics get a real `st.metric` card. Non-numeric ones (the leakage
+    comparison key `"full_row"`, a winning model name, a `bool` flag) get a short
+    badge line instead, because `st.metric` is built for measurements and renders
+    a bare identifier as a cramped headline. Either way the human-readable label
+    is what is shown and the technical manifest name lives in the help tooltip.
+    """
+    label = metric_label(metric.name)
+    value = format_metric_display(metric)
+    if is_numeric_metric(metric):
+        st.metric(label=label, value=value, help=metric.name, border=True)
+        return
+    st.markdown(f"**{label}**  \n`{value}`", help=metric.name)
+
+
+def _render_metric_row(row: tuple[Metric, ...]) -> None:
+    """Render one grid row of metric cards, then their descriptions at full width.
+
+    Descriptions are deliberately emitted *after* the `st.columns` block closes,
+    so a 150-character sentence gets the whole page width instead of a quarter of
+    it. `st.columns(len(row))` is always at most `METRICS_PER_ROW` wide because
+    `metric_rows` chunked the metrics before we got here.
+    """
+    columns = st.columns(len(row))
+    for column, metric in zip(columns, row, strict=True):
+        with column:
+            _render_metric_card(metric)
+    for metric in row:
+        if metric.description:
+            st.caption(f"**{metric_label(metric.name)}** — {metric.description}")
+
+
 def _render_metrics(section: Section) -> None:
-    """Render one `st.metric` per declared metric, in manifest order."""
+    """Render every declared metric as a wrapping grid plus an "All metrics" table.
+
+    The grid never puts more than `METRICS_PER_ROW` cards in one `st.columns`
+    row, so no value is ever truncated to `"67…"`. The expander below it repeats
+    every metric with its raw name and full description, so nothing the manifest
+    declares can be hidden by the layout.
+    """
     if not section.metrics:
         return
     st.subheader("Metrics")
-    columns = st.columns(len(section.metrics))
-    for column, metric in zip(columns, section.metrics, strict=True):
-        with column:
-            st.metric(label=metric.name, value=format_metric_value(metric.value))
-            if metric.description:
-                st.caption(metric.description)
+    for row in metric_rows(section.metrics, METRICS_PER_ROW):
+        _render_metric_row(row)
+    with st.expander("All metrics"):
+        st.dataframe(metrics_table(section.metrics))
 
 
 def _render_notes(section: Section) -> None:

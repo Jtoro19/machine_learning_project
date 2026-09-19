@@ -48,6 +48,61 @@ SECTION_ORDER: Final[tuple[str, ...]] = (
 )
 """Known producer ids, in display order; every other id follows, sorted."""
 
+METRICS_PER_ROW: Final[int] = 4
+"""Maximum metric cards rendered in a single `st.columns` row.
+
+Four is the widest grid that still leaves each card room for a full value; beyond
+that Streamlit truncates the number itself (``67,601`` collapsing to ``67…``),
+which is the whole reason the metric grid wraps instead of using one long row.
+"""
+
+LABEL_ACRONYMS: Final[frozenset[str]] = frozenset(
+    {
+        "ari",
+        "auc",
+        "cv",
+        "dbscan",
+        "eps",
+        "f1",
+        "fn",
+        "fp",
+        "gp",
+        "knn",
+        "nmi",
+        "pca",
+        "pr",
+        "roc",
+        "svc",
+        "ttl",
+        "vif",
+    }
+)
+"""Lower-case metric-name words rendered upper-case in a human-readable label."""
+
+SHARE_NAME_KEYWORDS: Final[tuple[str, ...]] = (
+    "share",
+    "fraction",
+    "proportion",
+    "percent",
+    "_pct",
+)
+"""Case-insensitive metric-name substrings that mark a value as a 0..1 share."""
+
+SHARE_DESCRIPTION_KEYWORDS: Final[tuple[str, ...]] = (
+    "share of",
+    "fraction of",
+    "proportion of",
+    "as a share",
+    "as a fraction",
+)
+"""Case-insensitive description substrings that mark a value as a 0..1 share.
+
+Deliberately phrase-based rather than word-based: a description merely containing
+"percentage" often reports a value that is *already* a percentage (82.1), which
+must not be multiplied by 100 again. The `[-1, 1]` range guard in
+`is_share_metric` is the second line of defence for exactly that case.
+"""
+
 
 class SectionStatus(StrEnum):
     """Outcome of loading one producer folder's `manifest.json`."""
@@ -454,7 +509,8 @@ def format_metric_value(value: object) -> str:
         A human-readable string. `bool` is checked before `int` (a `bool` is an
         `int` subclass in Python). The strings `"inf"`/`"-inf"`/`"nan"` (and the
         `"infinity"` spellings, case-insensitively) render as `"∞"`/`"-∞"`/`"n/a"`,
-        matching the float-infinity/NaN handling.
+        matching the float-infinity/NaN handling. Integers carry thousands
+        separators; non-integral floats are rounded to three decimals.
     """
     if isinstance(value, str):
         normalized = value.strip().lower()
@@ -479,9 +535,126 @@ def format_metric_value(value: object) -> str:
             return "∞" if value > 0 else "-∞"
         if value.is_integer() and abs(value) < 1e15:
             return f"{int(value):,}"
-        return f"{value:,.4f}"
+        return f"{value:,.3f}"
 
     return str(value)
+
+
+def metric_label(name: str) -> str:
+    """Turn a technical metric name into a human-readable label.
+
+    Args:
+        name: The manifest metric name, e.g. `"train_duplicate_rows_dropped"`.
+
+    Returns:
+        A sentence-cased label, e.g. `"Train duplicate rows dropped"`. Words in
+        `LABEL_ACRONYMS` are upper-cased wherever they appear, so
+        `"kmeans_silhouette_at_selected_k_with_ttl"` keeps its `"TTL"`. The
+        original `name` is returned unchanged when it has no word characters,
+        so the caller always has something to show.
+    """
+    words = [word for word in name.replace("-", "_").split("_") if word]
+    if not words:
+        return name
+
+    rendered = [
+        word.upper() if word.lower() in LABEL_ACRONYMS else word.lower() for word in words
+    ]
+    first = rendered[0]
+    if first.lower() not in LABEL_ACRONYMS:
+        first = first.capitalize()
+    return " ".join([first, *rendered[1:]])
+
+
+def is_numeric_metric(metric: Metric) -> bool:
+    """Return `True` when `metric.value` is a real number worth an `st.metric` card.
+
+    `bool` is excluded on purpose: it is an `int` subclass in Python but reads as
+    a flag, not a measurement, so it belongs in the text-badge branch alongside
+    string values such as `"full_row"` or `"hist_gradient_boosting"`.
+    """
+    return isinstance(metric.value, (int, float)) and not isinstance(metric.value, bool)
+
+
+def is_share_metric(metric: Metric) -> bool:
+    """Return `True` when `metric` holds a 0..1 share that should render as a percentage.
+
+    A metric qualifies only when both hold:
+
+    1. its name or description signals a share/fraction/proportion, and
+    2. its value is a real number inside `[-1, 1]`.
+
+    The range guard is what keeps an already-percentage value (for example
+    `expected_cost_reduction_with_ttl == 82.1`) from being multiplied by 100 a
+    second time, and keeps `cost_ratio_fn_to_fp == 20.0` a plain ratio.
+    """
+    if not is_numeric_metric(metric):
+        return False
+
+    value = float(metric.value)
+    if math.isnan(value) or math.isinf(value) or abs(value) > 1.0:
+        return False
+
+    lowered_name = metric.name.lower()
+    if any(keyword in lowered_name for keyword in SHARE_NAME_KEYWORDS):
+        return True
+
+    lowered_description = metric.description.lower()
+    return any(keyword in lowered_description for keyword in SHARE_DESCRIPTION_KEYWORDS)
+
+
+def format_metric_display(metric: Metric) -> str:
+    """Format `metric` for its card, applying the percentage rule then `format_metric_value`.
+
+    Args:
+        metric: The metric to display.
+
+    Returns:
+        `"5.50%"` for a share metric, otherwise whatever `format_metric_value`
+        makes of the raw value: `"67,601"` for integers, `"0.405"` for floats,
+        and the value itself for strings. Never raises.
+    """
+    if is_share_metric(metric):
+        return f"{float(metric.value) * 100:,.2f}%"
+    return format_metric_value(metric.value)
+
+
+def metric_rows(
+    metrics: Sequence[Metric],
+    per_row: int = METRICS_PER_ROW,
+) -> tuple[tuple[Metric, ...], ...]:
+    """Chunk `metrics` into display rows of at most `per_row` entries, in manifest order.
+
+    Args:
+        metrics: The metrics to lay out.
+        per_row: Maximum cards per row. Values below 1 are clamped to 1, so a
+            caller can never produce an empty or negative `st.columns` spec.
+
+    Returns:
+        A tuple of rows; every row holds between 1 and `per_row` metrics, and
+        concatenating the rows reproduces `metrics` exactly.
+    """
+    width = max(1, per_row)
+    return tuple(
+        tuple(metrics[start : start + width]) for start in range(0, len(metrics), width)
+    )
+
+
+def metrics_table(metrics: Sequence[Metric]) -> pd.DataFrame:
+    """Build the full `name`/`value`/`description` frame behind the "All metrics" expander.
+
+    Values are formatted exactly as the cards format them, so the expander is a
+    complete, scrollable restatement of the grid rather than a second source of
+    truth. Columns are always present, even when `metrics` is empty.
+    """
+    return pd.DataFrame(
+        {
+            "name": [metric.name for metric in metrics],
+            "value": [format_metric_display(metric) for metric in metrics],
+            "description": [metric.description for metric in metrics],
+        },
+        columns=["name", "value", "description"],
+    )
 
 
 def is_disclosure_note(note: Note) -> bool:

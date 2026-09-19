@@ -16,16 +16,24 @@ from pathlib import Path
 import pytest
 
 from dashboard.loading import (
+    METRICS_PER_ROW,
+    Metric,
     Note,
     Section,
     SectionStatus,
     disclosure_notes,
     discover_sections,
     find_model_comparison,
+    format_metric_display,
     format_metric_value,
     is_disclosure_note,
+    is_numeric_metric,
+    is_share_metric,
     load_section,
     load_table,
+    metric_label,
+    metric_rows,
+    metrics_table,
 )
 
 ERROR_FLOOR_TEXT = (
@@ -308,7 +316,8 @@ class TestFormatMetricValue:
             (float("nan"), "n/a"),
             (True, "true"),
             (1234, "1,234"),
-            (1.5, "1.5000"),
+            (1.5, "1.500"),
+            (0.4052645710165401, "0.405"),
             ("srcip_dstip", "srcip_dstip"),
         ],
     )
@@ -351,6 +360,314 @@ class TestFindModelComparison:
         )
         sections = discover_sections(root)
         assert find_model_comparison(sections) is None
+
+
+class _FakeColumn:
+    """Stands in for one `st.columns` return value; usable as a context manager."""
+
+    def __enter__(self) -> "_FakeColumn":
+        return self
+
+    def __exit__(self, *exc_info: object) -> bool:
+        return False
+
+
+class _FakeExpander:
+    """Stands in for `st.expander`; records nothing beyond being entered."""
+
+    def __init__(self, label: str) -> None:
+        self.label = label
+
+    def __enter__(self) -> "_FakeExpander":
+        return self
+
+    def __exit__(self, *exc_info: object) -> bool:
+        return False
+
+
+class _StreamlitRecorder:
+    """A drop-in stand-in for the `st` module that records what a render helper drew.
+
+    Only the calls these tests assert on are implemented; every other Streamlit
+    attribute resolves to a no-op through `__getattr__`, so a render helper can
+    call `st.image`, `st.title` or anything else without the recorder needing to
+    grow. That keeps the recorder honest about the one thing it exists to prove:
+    how wide each `st.columns` row is.
+    """
+
+    def __init__(self) -> None:
+        self.column_counts: list[int] = []
+        self.metrics: list[dict[str, object]] = []
+        self.markdowns: list[tuple[str, object]] = []
+        self.captions: list[str] = []
+        self.dataframes: list[object] = []
+        self.expanders: list[str] = []
+
+    def columns(self, spec: object, **_kwargs: object) -> list[_FakeColumn]:
+        count = spec if isinstance(spec, int) else len(spec)  # type: ignore[arg-type]
+        self.column_counts.append(count)
+        return [_FakeColumn() for _ in range(count)]
+
+    def metric(
+        self,
+        label: str = "",
+        value: object = "",
+        **kwargs: object,
+    ) -> None:
+        self.metrics.append({"label": label, "value": value, **kwargs})
+
+    def markdown(self, body: str, **kwargs: object) -> None:
+        self.markdowns.append((body, kwargs.get("help")))
+
+    def caption(self, body: str, **_kwargs: object) -> None:
+        self.captions.append(body)
+
+    def dataframe(self, data: object, **_kwargs: object) -> None:
+        self.dataframes.append(data)
+
+    def expander(self, label: str, **_kwargs: object) -> _FakeExpander:
+        self.expanders.append(label)
+        return _FakeExpander(label)
+
+    def __getattr__(self, _name: str):
+        def _noop(*_args: object, **_kwargs: object) -> None:
+            return None
+
+        return _noop
+
+
+def _metric_section(metrics: tuple[Metric, ...], notebook_id: str = "data_cleaning") -> Section:
+    """Build a metrics-only `Section` for exercising the render helpers."""
+    return Section(
+        notebook_id=notebook_id,
+        directory=Path("/nonexistent") / notebook_id,
+        status=SectionStatus.OK,
+        problem=None,
+        schema_version="1.0",
+        generated_at="2024-01-01T00:00:00Z",
+        tables=(),
+        figures=(),
+        metrics=metrics,
+        notes=(),
+    )
+
+
+@pytest.fixture
+def recorder(monkeypatch: pytest.MonkeyPatch) -> _StreamlitRecorder:
+    """Swap `dashboard.app.st` for a recorder for the duration of one test."""
+    import dashboard.app as app_module
+
+    stub = _StreamlitRecorder()
+    monkeypatch.setattr(app_module, "st", stub)
+    return stub
+
+
+class TestMetricLabel:
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [
+            ("train_duplicate_rows_dropped", "Train duplicate rows dropped"),
+            ("test_leakage_comparison_key", "Test leakage comparison key"),
+            ("best_macro_f1_with_ttl", "Best macro F1 with TTL"),
+            ("pca_components_90_with_ttl", "PCA components 90 with TTL"),
+            ("rows", "Rows"),
+        ],
+    )
+    def test_humanises_metric_names(self, name: str, expected: str) -> None:
+        assert metric_label(name) == expected
+
+    def test_unsplittable_name_returned_unchanged(self) -> None:
+        assert metric_label("_") == "_"
+
+
+class TestMetricRows:
+    def test_chunks_into_rows_of_at_most_four(self) -> None:
+        metrics = tuple(Metric(name=f"m{i}", value=i, description="") for i in range(13))
+        rows = metric_rows(metrics)
+        assert [len(row) for row in rows] == [4, 4, 4, 1]
+
+    def test_rows_preserve_manifest_order(self) -> None:
+        metrics = tuple(Metric(name=f"m{i}", value=i, description="") for i in range(7))
+        flattened = [metric for row in metric_rows(metrics) for metric in row]
+        assert flattened == list(metrics)
+
+    def test_empty_metrics_produce_no_rows(self) -> None:
+        assert metric_rows(()) == ()
+
+    def test_per_row_below_one_is_clamped(self) -> None:
+        metrics = tuple(Metric(name=f"m{i}", value=i, description="") for i in range(3))
+        assert [len(row) for row in metric_rows(metrics, 0)] == [1, 1, 1]
+
+    def test_metrics_per_row_constant_is_four(self) -> None:
+        assert METRICS_PER_ROW == 4
+
+
+class TestMetricValueClassification:
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [(1, True), (1.5, True), (True, False), ("full_row", False), ("inf", False)],
+    )
+    def test_is_numeric_metric(self, value: object, expected: bool) -> None:
+        assert is_numeric_metric(Metric(name="m", value=value, description="")) is expected
+
+    def test_share_detected_from_name(self) -> None:
+        metric = Metric(name="dbscan_noise_fraction_with_ttl", value=0.0116, description="")
+        assert is_share_metric(metric)
+        assert format_metric_display(metric) == "1.16%"
+
+    def test_share_detected_from_description(self) -> None:
+        metric = Metric(
+            name="test_contradictory_share_of_retained",
+            value=0.05499205983300036,
+            description="Retained rows as a share of the retained testing set.",
+        )
+        assert format_metric_display(metric) == "5.50%"
+
+    def test_bare_ratio_above_one_is_not_a_percentage(self) -> None:
+        metric = Metric(
+            name="cost_ratio_fn_to_fp",
+            value=20.0,
+            description="The stated FN:FP cost ratio.",
+        )
+        assert not is_share_metric(metric)
+        assert format_metric_display(metric) == "20"
+
+    def test_already_percentage_value_is_not_multiplied_again(self) -> None:
+        metric = Metric(
+            name="expected_cost_reduction_with_ttl",
+            value=82.10416153656735,
+            description="Percentage reduction in expected cost.",
+        )
+        assert not is_share_metric(metric)
+        assert format_metric_display(metric) == "82.104"
+
+    def test_integer_gets_thousands_separator(self) -> None:
+        metric = Metric(name="train_duplicate_rows_dropped", value=1_234, description="")
+        assert format_metric_display(metric) == "1,234"
+
+    def test_non_numeric_value_passes_through(self) -> None:
+        metric = Metric(name="test_leakage_comparison_key", value="full_row", description="")
+        assert format_metric_display(metric) == "full_row"
+
+
+class TestMetricsTable:
+    def test_lists_every_metric_with_name_value_and_description(self) -> None:
+        metrics = (
+            Metric(name="rows", value=1080, description="Row count."),
+            Metric(name="key", value="full_row", description="Comparison key."),
+        )
+        frame = metrics_table(metrics)
+        assert list(frame.columns) == ["name", "value", "description"]
+        assert list(frame["name"]) == ["rows", "key"]
+        assert list(frame["value"]) == ["1,080", "full_row"]
+        assert list(frame["description"]) == ["Row count.", "Comparison key."]
+
+    def test_empty_metrics_still_have_columns(self) -> None:
+        assert list(metrics_table(()).columns) == ["name", "value", "description"]
+
+
+class TestRenderMetricsGrid:
+    """The regression guard: no section may ever render a row wider than four cards."""
+
+    def test_no_row_exceeds_four_columns(self, recorder: _StreamlitRecorder) -> None:
+        import dashboard.app as app_module
+
+        metrics = tuple(
+            Metric(name=f"metric_number_{i}", value=i * 1000, description=f"Metric {i}.")
+            for i in range(13)
+        )
+        app_module.render_section(_metric_section(metrics))
+
+        assert recorder.column_counts, "the metric grid rendered no columns at all"
+        assert max(recorder.column_counts) <= METRICS_PER_ROW
+        assert sum(recorder.column_counts) == len(metrics)
+
+    def test_real_manifest_sections_never_exceed_four_columns(
+        self, recorder: _StreamlitRecorder, synthetic_results: Path
+    ) -> None:
+        import dashboard.app as app_module
+
+        for section in discover_sections(synthetic_results):
+            recorder.column_counts.clear()
+            app_module.render_section(section)
+            assert all(count <= METRICS_PER_ROW for count in recorder.column_counts), (
+                f"section {section.notebook_id} rendered a row wider than {METRICS_PER_ROW}"
+            )
+
+    def test_single_metric_renders_a_single_column(self, recorder: _StreamlitRecorder) -> None:
+        import dashboard.app as app_module
+
+        section = _metric_section((Metric(name="rows", value=1080, description=""),))
+        app_module.render_section(section)
+        assert recorder.column_counts == [1]
+
+    def test_sectionless_metrics_render_no_columns(self, recorder: _StreamlitRecorder) -> None:
+        import dashboard.app as app_module
+
+        app_module.render_section(_metric_section(()))
+        assert recorder.column_counts == []
+
+    def test_numeric_metric_uses_human_label_with_name_in_help(
+        self, recorder: _StreamlitRecorder
+    ) -> None:
+        import dashboard.app as app_module
+
+        section = _metric_section(
+            (Metric(name="train_duplicate_rows_dropped", value=1_234, description=""),)
+        )
+        app_module.render_section(section)
+
+        assert len(recorder.metrics) == 1
+        card = recorder.metrics[0]
+        assert card["label"] == "Train duplicate rows dropped"
+        assert card["value"] == "1,234"
+        assert card["help"] == "train_duplicate_rows_dropped"
+
+    def test_non_numeric_metric_is_a_badge_not_a_metric_card(
+        self, recorder: _StreamlitRecorder
+    ) -> None:
+        import dashboard.app as app_module
+
+        section = _metric_section(
+            (Metric(name="test_leakage_comparison_key", value="full_row", description=""),)
+        )
+        app_module.render_section(section)
+
+        assert recorder.metrics == []
+        bodies = [body for body, _help in recorder.markdowns]
+        assert any("full_row" in body and "Test leakage comparison key" in body for body in bodies)
+        assert any(help_text == "test_leakage_comparison_key" for _body, help_text in recorder.markdowns)
+
+    def test_descriptions_are_captioned_outside_the_columns(
+        self, recorder: _StreamlitRecorder
+    ) -> None:
+        import dashboard.app as app_module
+
+        description = "Exact-duplicate rows dropped from the training partition (step 3)."
+        section = _metric_section(
+            (Metric(name="train_duplicate_rows_dropped", value=1_234, description=description),)
+        )
+        app_module.render_section(section)
+
+        assert any(description in caption for caption in recorder.captions)
+        assert any("Train duplicate rows dropped" in caption for caption in recorder.captions)
+
+    def test_all_metrics_expander_holds_every_metric(
+        self, recorder: _StreamlitRecorder
+    ) -> None:
+        import dashboard.app as app_module
+
+        metrics = tuple(
+            Metric(name=f"metric_number_{i}", value=i, description=f"Metric {i}.")
+            for i in range(9)
+        )
+        app_module.render_section(_metric_section(metrics))
+
+        assert "All metrics" in recorder.expanders
+        assert recorder.dataframes, "the All metrics expander rendered no table"
+        frame = recorder.dataframes[-1]
+        assert list(frame.columns) == ["name", "value", "description"]
+        assert len(frame) == len(metrics)
 
 
 class TestAppImport:
