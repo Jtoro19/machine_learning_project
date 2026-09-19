@@ -1,0 +1,5 @@
+variant,threshold,n_components
+with_ttl,0.900000,12
+with_ttl,0.950000,17
+without_ttl,0.900000,12
+without_ttl,0.950000,16

@@ -1,0 +1,380 @@
+{
+  "schema_version": "1.0",
+  "notebook_id": "eda_reduction_clustering",
+  "generated_at": "2026-09-19T07:36:47Z",
+  "tables": [
+    {
+      "path": "tables/partition_shape_and_dtypes.csv",
+      "title": "Column inventory of the cleaned training partition",
+      "type": "csv",
+      "description": "Every kept column in canonical order with its dtype, non-null count and role (feature_numeric, feature_skewed, feature_categorical, target)."
+    },
+    {
+      "path": "tables/numeric_summary_mean_vs_median.csv",
+      "title": "Central tendency and spread of the numeric features",
+      "type": "csv",
+      "description": "Raw-unit summary contrasting mean against median to expose right skew. mean_median_ratio is null where the median is zero."
+    },
+    {
+      "path": "tables/categorical_value_counts.csv",
+      "title": "Categorical feature frequencies",
+      "type": "csv",
+      "description": "proto / service / state frequencies on the cleaned training partition."
+    },
+    {
+      "path": "tables/attack_cat_distribution.csv",
+      "title": "Attack category balance of the cleaned training partition",
+      "type": "csv",
+      "description": "Row count and share per class, describing the label without using it as an input."
+    },
+    {
+      "path": "tables/pearson_correlation_matrix.csv",
+      "title": "Pearson correlation between modelled numeric features",
+      "type": "csv",
+      "description": "Linear correlation over the 36 numeric and skewed features in modelled form (log1p then standardised), with-TTL variant."
+    },
+    {
+      "path": "tables/spearman_correlation_matrix.csv",
+      "title": "Spearman rank correlation between modelled numeric features",
+      "type": "csv",
+      "description": "Rank correlation over the same 36 features. Identical in raw units, because log1p is strictly increasing."
+    },
+    {
+      "path": "tables/high_correlation_pairs.csv",
+      "title": "Feature pairs above the 0.9 correlation threshold",
+      "type": "csv",
+      "description": "Upper-triangle pairs exceeding the 0.9 absolute correlation threshold under Pearson, Spearman or both."
+    },
+    {
+      "path": "tables/variance_inflation_factors.csv",
+      "title": "Variance inflation factor per numeric feature, both TTL variants",
+      "type": "csv",
+      "description": "VIF computed as 1 / (1 - R^2) from an ordinary least-squares fit of each feature on all the others, in modelled form, one-hot columns excluded. status is ok, zero_variance or perfect_collinearity."
+    },
+    {
+      "path": "tables/pca_explained_variance.csv",
+      "title": "PCA explained variance per component, both TTL variants",
+      "type": "csv",
+      "description": "Scree data for the full component set of each variant's design matrix."
+    },
+    {
+      "path": "tables/pca_components_for_variance.csv",
+      "title": "Components required to reach 90% and 95% of variance",
+      "type": "csv",
+      "description": "The dimensionality answer per variant, and the source of min_samples for DBSCAN."
+    },
+    {
+      "path": "tables/pca_top_loadings_pc1_pc2.csv",
+      "title": "Largest PC1 and PC2 loadings, both TTL variants",
+      "type": "csv",
+      "description": "Top 15 loadings by absolute value per component, under a fixed sign convention so signs do not flip between runs."
+    },
+    {
+      "path": "tables/pca_variance_by_feature_block.csv",
+      "title": "Variance contribution of each feature block",
+      "type": "csv",
+      "description": "Share of total design-matrix variance and of PC1/PC2 squared loadings held by the numeric, skewed and one-hot blocks. Each share column sums to 1.0 per variant."
+    },
+    {
+      "path": "tables/kmeans_k_sweep_metrics.csv",
+      "title": "K-Means sweep over k = 2 to 12, both TTL variants",
+      "type": "csv",
+      "description": "Inertia and Calinski-Harabasz on the full cleaned training partition; silhouette on the stratified subsample, using labels from that same full-partition fit."
+    },
+    {
+      "path": "tables/dbscan_cluster_summary.csv",
+      "title": "DBSCAN cluster sizes on the stratified subsample",
+      "type": "csv",
+      "description": "Cluster sizes including the -1 noise label. A property of the subsample, not of the full partition."
+    },
+    {
+      "path": "tables/clustering_sample_allocation.csv",
+      "title": "Stratified subsample allocation for both samplers",
+      "type": "csv",
+      "description": "Per-class allocation for the floor=50 sample and the floor=0 proportional sample, evidencing how far the default floor over-represents minority classes."
+    },
+    {
+      "path": "tables/cluster_profile_original_units.csv",
+      "title": "Per-cluster feature means in original units",
+      "type": "csv",
+      "description": "Cluster means of the unscaled numeric and skewed features against the partition-wide mean, with the gap expressed in global standard deviations. Null where the global mean or standard deviation is zero."
+    },
+    {
+      "path": "tables/cluster_attack_cat_composition.csv",
+      "title": "Attack category composition of each cluster",
+      "type": "csv",
+      "description": "Post-hoc cross-tabulation of cluster labels against true classes, including zero cells. Profiling only: no metric is optimised against these labels."
+    }
+  ],
+  "figures": [
+    {
+      "path": "figures/attack_cat_distribution_bars.png",
+      "title": "Attack category distribution in the cleaned training partition",
+      "type": "png",
+      "description": "Sorted horizontal bars on a logarithmic row axis, because the largest class outnumbers the smallest by roughly two orders of magnitude."
+    },
+    {
+      "path": "figures/key_feature_histograms_raw.png",
+      "title": "Key feature distributions in raw units",
+      "type": "png",
+      "description": "Histogram grid for six volumetric and rate features in raw units, with a logarithmic count axis so the right tail is visible."
+    },
+    {
+      "path": "figures/key_feature_histograms_log1p.png",
+      "title": "Key feature distributions after log1p",
+      "type": "png",
+      "description": "The same six features after the log1p transform the preprocessing pipeline applies to skewed columns."
+    },
+    {
+      "path": "figures/key_feature_ecdf_raw_vs_log1p.png",
+      "title": "Empirical cumulative distributions: raw units versus log1p",
+      "type": "png",
+      "description": "Two panels showing the same six empirical cumulative distributions under a raw symlog axis and a log1p linear axis. The curves are identical by construction: log1p is strictly increasing, so it re-spaces the axis without changing the distribution."
+    },
+    {
+      "path": "figures/key_feature_boxplots_by_attack_cat.png",
+      "title": "Key feature spread by attack category",
+      "type": "png",
+      "description": "Horizontal boxplots per attack category on a symlog value axis. Whiskers are the 1st and 99th percentiles; individual outliers are omitted."
+    },
+    {
+      "path": "figures/pearson_correlation_heatmap.png",
+      "title": "Pearson correlation between modelled numeric features",
+      "type": "png",
+      "description": "Diverging palette centred exactly at zero with symmetric limits of -1 and 1. Values are in the matching CSV; the grid is not annotated."
+    },
+    {
+      "path": "figures/spearman_correlation_heatmap.png",
+      "title": "Spearman rank correlation between modelled numeric features",
+      "type": "png",
+      "description": "Same palette, centring and limits as the Pearson heatmap, so the two are directly comparable."
+    },
+    {
+      "path": "figures/variance_inflation_factors_bars.png",
+      "title": "Variance inflation factor per numeric feature, with and without the TTL shortcut pair",
+      "type": "png",
+      "description": "Grouped bars on a logarithmic axis. Infinite values are drawn at a clipped height with hatching; the table reports them as inf."
+    },
+    {
+      "path": "figures/pca_scree_plot.png",
+      "title": "PCA explained variance per component",
+      "type": "png",
+      "description": "Explained variance ratio per component for both TTL variants overlaid."
+    },
+    {
+      "path": "figures/pca_cumulative_variance.png",
+      "title": "PCA cumulative explained variance",
+      "type": "png",
+      "description": "Cumulative variance for both variants with reference lines at 90% and 95%."
+    },
+    {
+      "path": "figures/pca_top_loadings_pc1_pc2_bars.png",
+      "title": "Largest PC1 and PC2 loadings by feature block",
+      "type": "png",
+      "description": "Four panels (variant by component) of signed loading bars coloured by feature block, making the one-hot variance asymmetry visible."
+    },
+    {
+      "path": "figures/pca_scatter_pc1_pc2_by_attack_cat.png",
+      "title": "Training rows projected onto PC1 and PC2, coloured by attack category",
+      "type": "png",
+      "description": "One panel per TTL variant, drawn on the stratified subsample. Colour is applied after the projection was computed; no label entered the fit."
+    },
+    {
+      "path": "figures/kmeans_elbow_inertia.png",
+      "title": "K-Means inertia by number of clusters",
+      "type": "png",
+      "description": "Inertia on the full cleaned training partition for both variants."
+    },
+    {
+      "path": "figures/kmeans_silhouette_by_k.png",
+      "title": "K-Means silhouette by number of clusters (stratified subsample)",
+      "type": "png",
+      "description": "Mean silhouette on the stratified subsample for both variants, with the selected k marked. The value is a subsample estimate, not a population figure."
+    },
+    {
+      "path": "figures/kmeans_calinski_harabasz_by_k.png",
+      "title": "K-Means Calinski-Harabasz score by number of clusters",
+      "type": "png",
+      "description": "Calinski-Harabasz on the full cleaned training partition for both variants."
+    },
+    {
+      "path": "figures/dbscan_k_distance_plot.png",
+      "title": "Sorted k-nearest-neighbour distance and the selected eps",
+      "type": "png",
+      "description": "Sorted k-distance curve per variant with the selected eps drawn as a reference line, so a reader can disagree with the automatic selection from the picture."
+    }
+  ],
+  "metrics": [
+    {
+      "name": "train_rows",
+      "value": 107740,
+      "description": "Rows in the cleaned training partition analysed by this notebook."
+    },
+    {
+      "name": "attack_cat_classes",
+      "value": 10,
+      "description": "Distinct attack categories present in the cleaned training partition."
+    },
+    {
+      "name": "feature_columns_with_ttl",
+      "value": 39,
+      "description": "Size of the feature allow-list including the TTL shortcut pair."
+    },
+    {
+      "name": "feature_columns_without_ttl",
+      "value": 37,
+      "description": "Size of the feature allow-list excluding sttl and ct_state_ttl."
+    },
+    {
+      "name": "silhouette_sample_rows",
+      "value": 10000,
+      "description": "Rows in the floor=50 stratified subsample used for silhouette and DBSCAN."
+    },
+    {
+      "name": "silhouette_sensitivity_sample_rows",
+      "value": 10000,
+      "description": "Rows in the floor=0 proportional subsample used for the sensitivity silhouette."
+    },
+    {
+      "name": "correlated_pairs_above_0_9",
+      "value": 16,
+      "description": "Feature pairs whose absolute correlation exceeds 0.9 under Pearson or Spearman."
+    },
+    {
+      "name": "max_vif_with_ttl",
+      "value": "inf",
+      "description": "Largest variance inflation factor (With TTL shortcut). Registered as the string inf when at least one feature is perfectly collinear, so the JSON stays strictly valid."
+    },
+    {
+      "name": "max_vif_without_ttl",
+      "value": "inf",
+      "description": "Largest variance inflation factor (Without TTL shortcut). Registered as the string inf when at least one feature is perfectly collinear, so the JSON stays strictly valid."
+    },
+    {
+      "name": "pca_components_90_with_ttl",
+      "value": 12,
+      "description": "Principal components required to reach 90% of the design-matrix variance (With TTL shortcut)."
+    },
+    {
+      "name": "pca_components_95_with_ttl",
+      "value": 17,
+      "description": "Principal components required to reach 95% of the design-matrix variance (With TTL shortcut)."
+    },
+    {
+      "name": "pca_components_90_without_ttl",
+      "value": 12,
+      "description": "Principal components required to reach 90% of the design-matrix variance (Without TTL shortcut)."
+    },
+    {
+      "name": "pca_components_95_without_ttl",
+      "value": 16,
+      "description": "Principal components required to reach 95% of the design-matrix variance (Without TTL shortcut)."
+    },
+    {
+      "name": "onehot_share_of_total_variance_with_ttl",
+      "value": 0.040466007003083906,
+      "description": "Share of total design-matrix variance held by the unscaled one-hot block (With TTL shortcut)."
+    },
+    {
+      "name": "onehot_share_of_total_variance_without_ttl",
+      "value": 0.0427446130731499,
+      "description": "Share of total design-matrix variance held by the unscaled one-hot block (Without TTL shortcut)."
+    },
+    {
+      "name": "kmeans_selected_k_with_ttl",
+      "value": 10,
+      "description": "Cluster count selected as the silhouette maximum over k = 2 to 12, ties broken toward the smaller k (With TTL shortcut)."
+    },
+    {
+      "name": "kmeans_silhouette_at_selected_k_with_ttl",
+      "value": 0.47230446578884877,
+      "description": "Mean silhouette at the selected k on the floor=50 stratified subsample (With TTL shortcut)."
+    },
+    {
+      "name": "kmeans_silhouette_floor0_sensitivity_with_ttl",
+      "value": 0.4676305224541192,
+      "description": "Mean silhouette at the selected k on the floor=0 proportional subsample, the population-representative comparison (With TTL shortcut)."
+    },
+    {
+      "name": "kmeans_selected_k_without_ttl",
+      "value": 10,
+      "description": "Cluster count selected as the silhouette maximum over k = 2 to 12, ties broken toward the smaller k (Without TTL shortcut)."
+    },
+    {
+      "name": "kmeans_silhouette_at_selected_k_without_ttl",
+      "value": 0.4415455751198089,
+      "description": "Mean silhouette at the selected k on the floor=50 stratified subsample (Without TTL shortcut)."
+    },
+    {
+      "name": "kmeans_silhouette_floor0_sensitivity_without_ttl",
+      "value": 0.4365896751519167,
+      "description": "Mean silhouette at the selected k on the floor=0 proportional subsample, the population-representative comparison (Without TTL shortcut)."
+    },
+    {
+      "name": "dbscan_eps_with_ttl",
+      "value": 4.873013478300222,
+      "description": "Neighbourhood radius selected by the normalised chord rule on the sorted k-distance curve (With TTL shortcut)."
+    },
+    {
+      "name": "dbscan_min_samples_with_ttl",
+      "value": 24,
+      "description": "Minimum neighbourhood size, fixed at twice the 90%-variance component count (With TTL shortcut)."
+    },
+    {
+      "name": "dbscan_eps_without_ttl",
+      "value": 4.914098774402462,
+      "description": "Neighbourhood radius selected by the normalised chord rule on the sorted k-distance curve (Without TTL shortcut)."
+    },
+    {
+      "name": "dbscan_min_samples_without_ttl",
+      "value": 24,
+      "description": "Minimum neighbourhood size, fixed at twice the 90%-variance component count (Without TTL shortcut)."
+    },
+    {
+      "name": "dbscan_cluster_count_with_ttl",
+      "value": 3,
+      "description": "Clusters found on the stratified subsample, excluding the noise label (With TTL shortcut)."
+    },
+    {
+      "name": "dbscan_noise_fraction_with_ttl",
+      "value": 0.0027,
+      "description": "Share of subsample rows assigned to the noise label. A subsample statistic, not a partition statistic (With TTL shortcut)."
+    },
+    {
+      "name": "dbscan_cluster_count_without_ttl",
+      "value": 3,
+      "description": "Clusters found on the stratified subsample, excluding the noise label (Without TTL shortcut)."
+    },
+    {
+      "name": "dbscan_noise_fraction_without_ttl",
+      "value": 0.0027,
+      "description": "Share of subsample rows assigned to the noise label. A subsample statistic, not a partition statistic (Without TTL shortcut)."
+    }
+  ],
+  "notes": [
+    {
+      "id": "onehot_variance_asymmetry",
+      "text": "The categorical branch of the preprocessing pipeline carries no scaler, so one-hot columns hold at most 0.25 variance against 1.0 for standardised numeric columns. Measured one-hot share of total variance: With TTL shortcut: 0.0405, Without TTL shortcut: 0.0427. PCA is numeric-dominated by construction; a numeric-heavy PC1 is expected and is not evidence that the categorical features are uninformative."
+    },
+    {
+      "id": "silhouette_is_subsample_estimate",
+      "text": "Silhouette is computed on a stratified subsample of at most 10,000 rows, stratified by attack_cat with a per-class floor of 50, seed 42. K-Means itself is fitted on the full cleaned training partition; only the metric is sampled. The value is an estimate, and the floor makes the sample class-rebalanced rather than population-representative."
+    },
+    {
+      "id": "dbscan_is_subsample_property",
+      "text": "The DBSCAN noise fraction, cluster count and cluster sizes are properties of that same subsample. They are not claims about the full cleaned training partition."
+    },
+    {
+      "id": "dbscan_eps_not_transferable",
+      "text": "Local density scales with row count. An eps calibrated on a 10,000-row sample is too large for the full partition and must not be lifted into another notebook. Chord rule degenerated to a fallback for: none."
+    },
+    {
+      "id": "attack_cat_is_post_hoc_only",
+      "text": "attack_cat is used for stratification, colouring and post-hoc profiling only. It never enters a feature matrix and is never a fitting target. No external cluster-validation metric (adjusted Rand index, normalised mutual information) is computed here; those are reserved for notebook 2."
+    },
+    {
+      "id": "ttl_shortcut_effect",
+      "text": "Removing sttl and ct_state_ttl changed the maximum VIF: False (with_ttl=inf, without_ttl=inf). Changed the 90%-variance component count: False (with_ttl=12, without_ttl=12). Changed the selected k: False (with_ttl=10, without_ttl=10). Changed the number of distinct clusters in the composition table: False."
+    }
+  ]
+}

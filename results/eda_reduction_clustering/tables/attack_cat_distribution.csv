@@ -1,0 +1,11 @@
+attack_cat,rows,share
+Analysis,1594,0.014795
+Backdoor,1535,0.014247
+DoS,3806,0.035326
+Exploits,19844,0.184184
+Fuzzers,16150,0.149898
+Generic,4181,0.038806
+Normal,51890,0.481622
+Reconnaissance,7522,0.069816
+Shellcode,1091,0.010126
+Worms,127,0.001179

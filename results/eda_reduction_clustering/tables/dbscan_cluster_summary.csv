@@ -1,0 +1,9 @@
+variant,cluster,rows,share
+with_ttl,-1,27,0.002700
+with_ttl,0,9750,0.975000
+with_ttl,1,174,0.017400
+with_ttl,2,49,0.004900
+without_ttl,-1,27,0.002700
+without_ttl,0,9750,0.975000
+without_ttl,1,174,0.017400
+without_ttl,2,49,0.004900

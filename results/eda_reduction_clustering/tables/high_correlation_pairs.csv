@@ -1,0 +1,17 @@
+feature_a,feature_b,pearson,spearman,method_flagged
+ct_srv_src,ct_srv_dst,0.913092,0.813288,pearson
+dbytes,dloss,0.844723,0.946375,spearman
+dinpkt,sjit,0.895855,0.901180,spearman
+dpkts,dbytes,0.952768,0.968488,both
+dpkts,dloss,0.923623,0.962821,both
+rate,sinpkt,-0.899805,-0.957219,spearman
+rate,sload,0.959387,0.943478,both
+sinpkt,sjit,0.863615,0.933237,spearman
+sload,sinpkt,-0.866172,-0.917066,spearman
+spkts,dpkts,0.911786,0.921266,both
+spkts,sloss,0.910772,0.942665,both
+swin,dwin,0.986841,0.986858,both
+synack,ackdat,0.757580,0.950898,spearman
+tcprtt,ackdat,0.932464,0.979783,both
+tcprtt,synack,0.942227,0.989996,both
+trans_depth,ct_flw_http_mthd,0.279958,0.999387,spearman

@@ -1,0 +1,7 @@
+variant,block,n_columns,share_of_total_variance,share_of_pc1_loading_sq,share_of_pc2_loading_sq
+with_ttl,numeric,21,0.559728,0.379280,0.510005
+with_ttl,onehot,17,0.040466,0.042955,0.002863
+with_ttl,skewed,15,0.399806,0.577765,0.487132
+without_ttl,numeric,19,0.534937,0.375787,0.385267
+without_ttl,onehot,17,0.042745,0.043313,0.004663
+without_ttl,skewed,15,0.422319,0.580900,0.610070

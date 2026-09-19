@@ -1,0 +1,41 @@
+{
+  "metrics": {
+    "train_rows": 107740,
+    "attack_cat_classes": 10,
+    "feature_columns_with_ttl": 39,
+    "feature_columns_without_ttl": 37,
+    "silhouette_sample_rows": 10000,
+    "silhouette_sensitivity_sample_rows": 10000,
+    "correlated_pairs_above_0_9": 16,
+    "max_vif_with_ttl": "inf",
+    "max_vif_without_ttl": "inf",
+    "pca_components_90_with_ttl": 12,
+    "pca_components_95_with_ttl": 17,
+    "pca_components_90_without_ttl": 12,
+    "pca_components_95_without_ttl": 16,
+    "onehot_share_of_total_variance_with_ttl": 0.040466007003083906,
+    "onehot_share_of_total_variance_without_ttl": 0.0427446130731499,
+    "kmeans_selected_k_with_ttl": 10,
+    "kmeans_silhouette_at_selected_k_with_ttl": 0.47230446578884877,
+    "kmeans_silhouette_floor0_sensitivity_with_ttl": 0.4676305224541192,
+    "kmeans_selected_k_without_ttl": 10,
+    "kmeans_silhouette_at_selected_k_without_ttl": 0.4415455751198089,
+    "kmeans_silhouette_floor0_sensitivity_without_ttl": 0.4365896751519167,
+    "dbscan_eps_with_ttl": 4.873013478300222,
+    "dbscan_min_samples_with_ttl": 24,
+    "dbscan_eps_without_ttl": 4.914098774402462,
+    "dbscan_min_samples_without_ttl": 24,
+    "dbscan_cluster_count_with_ttl": 3,
+    "dbscan_noise_fraction_with_ttl": 0.0027,
+    "dbscan_cluster_count_without_ttl": 3,
+    "dbscan_noise_fraction_without_ttl": 0.0027
+  },
+  "notes": {
+    "onehot_variance_asymmetry": "The categorical branch of the preprocessing pipeline carries no scaler, so one-hot columns hold at most 0.25 variance against 1.0 for standardised numeric columns. Measured one-hot share of total variance: With TTL shortcut: 0.0405, Without TTL shortcut: 0.0427. PCA is numeric-dominated by construction; a numeric-heavy PC1 is expected and is not evidence that the categorical features are uninformative.",
+    "silhouette_is_subsample_estimate": "Silhouette is computed on a stratified subsample of at most 10,000 rows, stratified by attack_cat with a per-class floor of 50, seed 42. K-Means itself is fitted on the full cleaned training partition; only the metric is sampled. The value is an estimate, and the floor makes the sample class-rebalanced rather than population-representative.",
+    "dbscan_is_subsample_property": "The DBSCAN noise fraction, cluster count and cluster sizes are properties of that same subsample. They are not claims about the full cleaned training partition.",
+    "dbscan_eps_not_transferable": "Local density scales with row count. An eps calibrated on a 10,000-row sample is too large for the full partition and must not be lifted into another notebook. Chord rule degenerated to a fallback for: none.",
+    "attack_cat_is_post_hoc_only": "attack_cat is used for stratification, colouring and post-hoc profiling only. It never enters a feature matrix and is never a fitting target. No external cluster-validation metric (adjusted Rand index, normalised mutual information) is computed here; those are reserved for notebook 2.",
+    "ttl_shortcut_effect": "Removing sttl and ct_state_ttl changed the maximum VIF: False (with_ttl=inf, without_ttl=inf). Changed the 90%-variance component count: False (with_ttl=12, without_ttl=12). Changed the selected k: False (with_ttl=10, without_ttl=10). Changed the number of distinct clusters in the composition table: False."
+  }
+}
