@@ -1,0 +1,347 @@
+{
+  "schema_version": "1.0",
+  "notebook_id": "classification",
+  "generated_at": "2026-09-19T07:21:21Z",
+  "tables": [
+    {
+      "path": "tables/subsample_allocations.csv",
+      "title": "Stratified subsample class allocations",
+      "type": "csv",
+      "description": "Per-class realized allocation (available, allocated, proportional, floor_applied) for each of the four stratified subsamples used by this notebook."
+    },
+    {
+      "path": "tables/dataset_shapes.csv",
+      "title": "Cleaned partition shapes",
+      "type": "csv",
+      "description": "Row and column counts for the cleaned training and testing partitions."
+    },
+    {
+      "path": "tables/model_inventory.csv",
+      "title": "Model inventory",
+      "type": "csv",
+      "description": "Every model's search configuration and training allocation: n_iter, search rows, training rows and whether that allocation is a subsample."
+    },
+    {
+      "path": "tables/cv_search_results_with_ttl.csv",
+      "title": "Cross-validated search results, with_ttl",
+      "type": "csv",
+      "description": "Best params, mean CV macro F1, n_iter and elapsed seconds per model, with_ttl variant. GaussianProcessClassifier and DummyClassifier report best_params={} and mean_cv_macro_f1='not_searched' (D2 and its baseline counterpart skip the search step entirely)."
+    },
+    {
+      "path": "tables/cv_search_results_without_ttl.csv",
+      "title": "Cross-validated search results, without_ttl",
+      "type": "csv",
+      "description": "Same as cv_search_results_with_ttl, without_ttl variant."
+    },
+    {
+      "path": "tables/test_metrics_with_ttl.csv",
+      "title": "Test-partition metrics, with_ttl",
+      "type": "csv",
+      "description": "Accuracy, balanced accuracy, macro F1, weighted F1, training_rows and subsampled per model, with_ttl variant, from the single test evaluation pass."
+    },
+    {
+      "path": "tables/test_metrics_without_ttl.csv",
+      "title": "Test-partition metrics, without_ttl",
+      "type": "csv",
+      "description": "Same as test_metrics_with_ttl, without_ttl variant."
+    },
+    {
+      "path": "tables/model_comparison.csv",
+      "title": "Model comparison across TTL variants",
+      "type": "csv",
+      "description": "Both TTL variants side by side for every model, with training_rows, subsampled and the signed macro F1 delta (with_ttl - without_ttl)."
+    },
+    {
+      "path": "tables/per_class_metrics_with_ttl.csv",
+      "title": "Per-class precision/recall/F1/support, with_ttl",
+      "type": "csv",
+      "description": "Precision, recall, F1 and support for every attack_cat class, every model, with_ttl variant."
+    },
+    {
+      "path": "tables/per_class_metrics_without_ttl.csv",
+      "title": "Per-class precision/recall/F1/support, without_ttl",
+      "type": "csv",
+      "description": "Same as per_class_metrics_with_ttl, without_ttl variant."
+    },
+    {
+      "path": "tables/confusion_matrix_best_with_ttl.csv",
+      "title": "Confusion matrix (long format), best with_ttl model (hist_gradient_boosting)",
+      "type": "csv",
+      "description": "true/pred/count/row_share long-format confusion matrix for the best-performing with_ttl model; the machine-readable source for the matching heatmap figure."
+    },
+    {
+      "path": "tables/confusion_matrix_best_without_ttl.csv",
+      "title": "Confusion matrix (long format), best without_ttl model (hist_gradient_boosting)",
+      "type": "csv",
+      "description": "Same as confusion_matrix_best_with_ttl, without_ttl variant."
+    },
+    {
+      "path": "tables/binary_threshold_sweep.csv",
+      "title": "Expected-cost sweep over the decision threshold",
+      "type": "csv",
+      "description": "expected_cost = 20*FN(t) + 1*FP(t) at every t in linspace(0.01, 0.99, 197), computed from out-of-fold training probabilities, per TTL variant."
+    },
+    {
+      "path": "tables/binary_operating_points.csv",
+      "title": "Binary operating points: default 0.5 vs cost-optimal",
+      "type": "csv",
+      "description": "Confusion counts and expected cost at threshold 0.5 and at the cost-optimal threshold t_star, per TTL variant."
+    },
+    {
+      "path": "tables/binary_curve_points.csv",
+      "title": "ROC and precision-recall curve points",
+      "type": "csv",
+      "description": "Long-format (variant, curve, x, y) points for the ROC and precision-recall curves, from the single test predict_proba pass per variant."
+    },
+    {
+      "path": "tables/label_noise_floor.csv",
+      "title": "Label-noise error floor",
+      "type": "csv",
+      "description": "Feature-identical, label-contradictory retained testing rows and their share of the retained testing set, sourced from results/data_cleaning/manifest.json."
+    },
+    {
+      "path": "tables/runtime_budget.csv",
+      "title": "Per-model, per-phase wall-clock runtime",
+      "type": "csv",
+      "description": "Wall-clock seconds (time.perf_counter()) for every search, final fit, binary refit and out-of-fold CV call, by model and TTL variant."
+    }
+  ],
+  "figures": [
+    {
+      "path": "figures/model_comparison_macro_f1.png",
+      "title": "Macro F1 by model and TTL variant",
+      "type": "png",
+      "description": "Grouped horizontal bar chart comparing macro F1 across models and TTL variants."
+    },
+    {
+      "path": "figures/model_comparison_balanced_accuracy.png",
+      "title": "Balanced accuracy by model and TTL variant",
+      "type": "png",
+      "description": "Grouped horizontal bar chart comparing balanced accuracy across models and TTL variants."
+    },
+    {
+      "path": "figures/confusion_matrix_heatmap_with_ttl.png",
+      "title": "Confusion matrix, best with_ttl model (hist_gradient_boosting)",
+      "type": "png",
+      "description": "Row-normalised confusion matrix heatmap for the best-performing with_ttl model."
+    },
+    {
+      "path": "figures/confusion_matrix_heatmap_without_ttl.png",
+      "title": "Confusion matrix, best without_ttl model (hist_gradient_boosting)",
+      "type": "png",
+      "description": "Row-normalised confusion matrix heatmap for the best-performing without_ttl model."
+    },
+    {
+      "path": "figures/per_class_f1_best_model.png",
+      "title": "Per-class F1, best model per TTL variant",
+      "type": "png",
+      "description": "Grouped vertical bar chart of per-class F1 for the best model of each TTL variant, classes ordered by support."
+    },
+    {
+      "path": "figures/training_rows_vs_macro_f1.png",
+      "title": "Training rows vs macro F1",
+      "type": "png",
+      "description": "Annotated scatter plot (log x-scale) of training rows against macro F1, every point labelled with its model, for both TTL variants."
+    },
+    {
+      "path": "figures/roc_curves_binary.png",
+      "title": "ROC curves, binary attack-vs-normal view",
+      "type": "png",
+      "description": "ROC curve per TTL variant, with the chance diagonal, from the single test predict_proba pass."
+    },
+    {
+      "path": "figures/precision_recall_curves_binary.png",
+      "title": "Precision-recall curves, binary attack-vs-normal view",
+      "type": "png",
+      "description": "Precision-recall curve per TTL variant, with the prevalence baseline, from the single test predict_proba pass."
+    },
+    {
+      "path": "figures/cost_vs_threshold.png",
+      "title": "Expected cost vs decision threshold",
+      "type": "png",
+      "description": "Expected cost curve per TTL variant over the threshold sweep, with a dashed vertical line at t_star and a dot at the default 0.5 threshold."
+    }
+  ],
+  "metrics": [
+    {
+      "name": "n_train_rows",
+      "value": 107740,
+      "description": "Rows in the cleaned training partition."
+    },
+    {
+      "name": "n_test_rows",
+      "value": 78084,
+      "description": "Rows in the cleaned testing partition."
+    },
+    {
+      "name": "n_features_with_ttl",
+      "value": 39,
+      "description": "Feature count with sttl/ct_state_ttl included."
+    },
+    {
+      "name": "n_features_without_ttl",
+      "value": 37,
+      "description": "Feature count with sttl/ct_state_ttl excluded."
+    },
+    {
+      "name": "search_subsample_rows",
+      "value": 30000,
+      "description": "Rows in the 30,000-row stratified train subsample used by every hyperparameter search."
+    },
+    {
+      "name": "gp_training_rows",
+      "value": 2000,
+      "description": "Rows GaussianProcessClassifier is trained on (capped at GP_MAX_ROWS)."
+    },
+    {
+      "name": "svc_training_rows",
+      "value": 5000,
+      "description": "Rows SVC(RBF) is trained on (capped at SVC_MAX_ROWS)."
+    },
+    {
+      "name": "knn_reference_rows",
+      "value": 20000,
+      "description": "Rows KNeighborsClassifier references at predict time (capped at KNN_REF_ROWS)."
+    },
+    {
+      "name": "n_classes",
+      "value": 10,
+      "description": "Number of attack_cat classes in the training partition."
+    },
+    {
+      "name": "random_seed",
+      "value": 42,
+      "description": "Random seed used for every split, subsample, search and model."
+    },
+    {
+      "name": "cv_folds",
+      "value": 3,
+      "description": "Number of StratifiedKFold folds used by every RandomizedSearchCV and cross_val_predict call."
+    },
+    {
+      "name": "search_n_iter_max",
+      "value": 15,
+      "description": "Maximum n_iter allowed for any RandomizedSearchCV instance in this notebook."
+    },
+    {
+      "name": "test_evaluations_count",
+      "value": 1,
+      "description": "Number of times the cleaned testing partition was scored across the entire notebook; MUST equal 1."
+    },
+    {
+      "name": "best_model_with_ttl",
+      "value": "hist_gradient_boosting",
+      "description": "Model with the highest macro F1 on the test partition, with_ttl variant."
+    },
+    {
+      "name": "best_macro_f1_with_ttl",
+      "value": 0.5116346585068794,
+      "description": "Highest macro F1 on the test partition, with_ttl variant."
+    },
+    {
+      "name": "best_balanced_accuracy_with_ttl",
+      "value": 0.576820001601647,
+      "description": "Balanced accuracy of the best with_ttl model on the test partition."
+    },
+    {
+      "name": "best_model_without_ttl",
+      "value": "hist_gradient_boosting",
+      "description": "Model with the highest macro F1 on the test partition, without_ttl variant."
+    },
+    {
+      "name": "best_macro_f1_without_ttl",
+      "value": 0.5028850969508926,
+      "description": "Highest macro F1 on the test partition, without_ttl variant."
+    },
+    {
+      "name": "best_balanced_accuracy_without_ttl",
+      "value": 0.5528641556107485,
+      "description": "Balanced accuracy of the best without_ttl model on the test partition."
+    },
+    {
+      "name": "macro_f1_ttl_delta",
+      "value": 0.008749561555986829,
+      "description": "Macro F1 delta (with_ttl - without_ttl) for the model that is best under with_ttl."
+    },
+    {
+      "name": "dummy_macro_f1",
+      "value": 0.08931877273958368,
+      "description": "DummyClassifier macro F1 on the test partition (with_ttl variant), the trivial baseline every other model must beat."
+    },
+    {
+      "name": "binary_roc_auc_with_ttl",
+      "value": 0.9829078297762512,
+      "description": "ROC-AUC of the binary attack-vs-normal view, with_ttl variant, single test predict_proba pass."
+    },
+    {
+      "name": "binary_average_precision_with_ttl",
+      "value": 0.9870529006247155,
+      "description": "Average precision (PR-AUC) of the binary view, with_ttl variant."
+    },
+    {
+      "name": "cost_ratio_fn_to_fp",
+      "value": 20.0,
+      "description": "The stated FN:FP cost ratio used to select the binary decision threshold."
+    },
+    {
+      "name": "cost_optimal_threshold_with_ttl",
+      "value": 0.075,
+      "description": "Cost-optimal decision threshold for with_ttl, selected from out-of-fold training probabilities."
+    },
+    {
+      "name": "cost_optimal_threshold_without_ttl",
+      "value": 0.08499999999999999,
+      "description": "Cost-optimal decision threshold for without_ttl, selected from out-of-fold training probabilities."
+    },
+    {
+      "name": "expected_cost_reduction_with_ttl",
+      "value": 82.10416153656735,
+      "description": "Percentage reduction in expected cost moving from threshold 0.5 to the cost-optimal threshold, with_ttl variant."
+    },
+    {
+      "name": "label_noise_error_floor_rows",
+      "value": 4294,
+      "description": "Retained testing rows that are feature-identical to a training row but label-contradictory (a near-certain minimum error floor)."
+    },
+    {
+      "name": "label_noise_error_floor_share",
+      "value": 0.05499205983300036,
+      "description": "label_noise_error_floor_rows as a share of the retained testing set."
+    },
+    {
+      "name": "total_runtime_seconds",
+      "value": 321.47449983799925,
+      "description": "Total notebook wall-clock time from ResultsWriter construction to this cell, in seconds."
+    }
+  ],
+  "notes": [
+    {
+      "id": "single_test_evaluation",
+      "text": "The cleaned testing partition is scored exactly once per model per TTL variant (test_evaluations_count=1); no test-informed model choice, hyperparameter, or threshold decision precedes that single pass."
+    },
+    {
+      "id": "subsample_trained_models",
+      "text": "GaussianProcessClassifier trains on at most 2000 rows, SVC(RBF) on at most 5000 rows, and KNeighborsClassifier references at most 20000 rows; every table flags training_rows and subsampled so these are never compared as equals to the 107740-row full-data models."
+    },
+    {
+      "id": "label_noise_error_floor",
+      "text": "The retained testing set carries feature-identical, label-contradictory rows inherited from the raw UNSW-NB15 partitions; this is a near-certain minimum error rate no classifier can eliminate, reported beside the accuracy results rather than folded into them."
+    },
+    {
+      "id": "ttl_shortcut_comparison",
+      "text": "Every model is searched, refit and evaluated twice: once with the sttl/ct_state_ttl testbed-shortcut pair and once without, so model_comparison.csv exposes exactly how much of each model's score the shortcut pair contributes."
+    },
+    {
+      "id": "cost_threshold_assumption",
+      "text": "FN:FP = 20:1. A missed intrusion carries incident-response and breach cost roughly an order of magnitude above one analyst triaging a false alarm; this ratio is a deliberately conservative SOC assumption, not a measurement."
+    },
+    {
+      "id": "benchmark_non_comparability",
+      "text": "GaussianProcessClassifier, SVC and KNeighborsClassifier are trained or referenced on a capped subsample while DummyClassifier, LogisticRegression, RandomForestClassifier and HistGradientBoostingClassifier train on the full training allocation; comparing their scores as if trained on equal data would be misleading, which is why training_rows and subsampled accompany every ranking table."
+    },
+    {
+      "id": "soc_conclusions",
+      "text": "See the markdown conclusions cell below for what a SOC would deploy, what the TTL delta implies about the testbed, what the label-noise floor implies for expected alert quality, and what the subsample caps do and do not let this notebook claim."
+    }
+  ]
+}

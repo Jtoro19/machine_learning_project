@@ -1,0 +1,8 @@
+model,best_params,mean_cv_macro_f1,n_iter,elapsed_seconds
+dummy,{},not_searched,0,0.000000
+gaussian_process,{},not_searched,0,0.000000
+hist_gradient_boosting,"{""l2_regularization"": 1, ""learning_rate"": 0.2, ""max_leaf_nodes"": 31}",0.584756301990526,5,5.769993
+knn,"{""n_neighbors"": 5, ""weights"": ""uniform""}",0.4811759451236677,6,0.872597
+logistic_regression,"{""C"": 2.481040974867813}",0.46183394629085894,5,1.802880
+random_forest,"{""max_depth"": null, ""max_features"": 0.3, ""min_samples_leaf"": 5}",0.6209711334214358,5,7.557670
+svc,"{""C"": 100, ""gamma"": 0.01}",0.5310528516024221,5,1.370043

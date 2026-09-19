@@ -1,0 +1,5 @@
+variant,operating_point,threshold,true_positives,false_positives,false_negatives,true_negatives,expected_cost
+with_ttl,cost_optimal,0.075000,15689,2887,1,11423,2907.000000
+with_ttl,default_0_5,0.500000,14950,1444,740,12866,16244.000000
+without_ttl,cost_optimal,0.085000,15689,2892,1,11418,2912.000000
+without_ttl,default_0_5,0.500000,14929,1402,761,12908,16622.000000

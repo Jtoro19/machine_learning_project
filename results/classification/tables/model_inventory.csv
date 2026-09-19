@@ -1,0 +1,8 @@
+model,label,n_iter,search_rows,training_rows,subsampled,search_n_jobs
+dummy,DummyClassifier (stratified baseline),0,0,107740,False,-1
+gaussian_process,GaussianProcessClassifier,0,0,2000,True,-1
+hist_gradient_boosting,HistGradientBoostingClassifier,5,30000,107740,False,4
+knn,KNeighborsClassifier,6,20000,20000,True,-1
+logistic_regression,LogisticRegression,5,30000,107740,False,-1
+random_forest,RandomForestClassifier,5,30000,107740,False,-1
+svc,SVC (RBF),5,5000,5000,True,-1
