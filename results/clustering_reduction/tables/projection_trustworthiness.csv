@@ -1,0 +1,7 @@
+variant,projection,trustworthiness,n_rows_scored
+with_ttl,pca,0.918265,2000
+with_ttl,tsne,0.994130,2000
+with_ttl,umap,0.987859,2000
+without_ttl,pca,0.917489,2000
+without_ttl,tsne,0.994465,2000
+without_ttl,umap,0.988364,2000

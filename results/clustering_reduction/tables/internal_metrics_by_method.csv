@@ -1,0 +1,9 @@
+variant,method,silhouette,calinski_harabasz,davies_bouldin,n_clusters,n_rows_scored
+with_ttl,dbscan,0.292655,369.262795,0.985336,2,9884
+with_ttl,kmeans,0.405265,2552.542779,0.902994,12,10000
+with_ttl,spectral,0.209189,657.900738,1.227271,12,5000
+with_ttl,ward,0.386779,2390.081345,1.001244,11,10000
+without_ttl,dbscan,0.306326,387.560946,0.952889,2,9898
+without_ttl,kmeans,0.376250,4432.892931,1.189752,2,10000
+without_ttl,spectral,0.577435,215.824360,0.437993,2,5000
+without_ttl,ward,0.375871,4412.819224,1.200208,2,10000

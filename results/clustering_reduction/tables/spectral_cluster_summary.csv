@@ -1,0 +1,15 @@
+variant,cluster,rows
+with_ttl,0,2224
+with_ttl,1,378
+with_ttl,2,884
+with_ttl,3,511
+with_ttl,4,597
+with_ttl,5,77
+with_ttl,6,44
+with_ttl,7,76
+with_ttl,8,39
+with_ttl,9,121
+with_ttl,10,27
+with_ttl,11,22
+without_ttl,0,4973
+without_ttl,1,27

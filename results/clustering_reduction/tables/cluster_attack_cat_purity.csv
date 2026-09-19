@@ -1,0 +1,15 @@
+variant,cluster,dominant_attack_cat,purity,cluster_size
+with_ttl,0,Normal,0.999508,2032
+with_ttl,1,Normal,1.000000,49
+with_ttl,2,Fuzzers,0.285432,3034
+with_ttl,3,Fuzzers,0.279261,1461
+with_ttl,4,Generic,0.801858,323
+with_ttl,5,Normal,0.954769,1017
+with_ttl,6,Normal,0.528736,174
+with_ttl,7,Exploits,0.529528,508
+with_ttl,8,Exploits,0.452563,917
+with_ttl,9,Normal,0.480447,358
+with_ttl,10,Exploits,1.000000,1
+with_ttl,11,Normal,0.253968,126
+without_ttl,0,Normal,0.441987,4973
+without_ttl,1,Normal,1.000000,27

@@ -1,0 +1,9 @@
+pipeline,variant,metric,value
+cluster_then_reduce,with_ttl,selected_k,12.000000
+cluster_then_reduce,with_ttl,silhouette_at_selected_k,0.405265
+cluster_then_reduce,without_ttl,selected_k,2.000000
+cluster_then_reduce,without_ttl,silhouette_at_selected_k,0.376250
+reduce_then_cluster,with_ttl,selected_k,10.000000
+reduce_then_cluster,with_ttl,silhouette_at_selected_k,0.472304
+reduce_then_cluster,without_ttl,selected_k,10.000000
+reduce_then_cluster,without_ttl,silhouette_at_selected_k,0.441546

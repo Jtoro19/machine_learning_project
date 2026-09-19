@@ -1,0 +1,11 @@
+attack_cat,count
+Analysis,187
+Backdoor,182
+DoS,383
+Exploits,1803
+Fuzzers,1476
+Generic,416
+Normal,4642
+Reconnaissance,712
+Shellcode,142
+Worms,57

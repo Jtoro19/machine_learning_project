@@ -1,0 +1,11 @@
+label,available,allocated,proportional,floor_applied,population_share,sample_share
+Analysis,1594,187,148,True,0.014795,0.018700
+Backdoor,1535,182,143,True,0.014247,0.018200
+DoS,3806,383,353,True,0.035326,0.038300
+Exploits,19844,1803,1842,False,0.184184,0.180300
+Fuzzers,16150,1476,1499,False,0.149898,0.147600
+Generic,4181,416,388,True,0.038806,0.041600
+Normal,51890,4642,4816,False,0.481622,0.464200
+Reconnaissance,7522,712,698,True,0.069816,0.071200
+Shellcode,1091,142,101,True,0.010126,0.014200
+Worms,127,57,12,True,0.001179,0.005700

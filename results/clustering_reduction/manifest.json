@@ -1,0 +1,407 @@
+{
+  "schema_version": "1.0",
+  "notebook_id": "clustering_reduction",
+  "generated_at": "2026-09-19T07:25:46Z",
+  "tables": [
+    {
+      "path": "tables/subsample_allocation.csv",
+      "title": "Stratified subsample allocation per attack category",
+      "type": "csv",
+      "description": "Realised row allocation per attack_cat class for the seed-42 stratified subsample, against the pure-proportional reference."
+    },
+    {
+      "path": "tables/attack_cat_class_sizes.csv",
+      "title": "Attack category sizes in the subsample",
+      "type": "csv",
+      "description": "Row count per attack_cat class in the 10,000-row stratified subsample."
+    },
+    {
+      "path": "tables/feature_space_shape.csv",
+      "title": "Preprocessed feature space shape per variant",
+      "type": "csv",
+      "description": "Row and column count of the preprocessed design matrix for each TTL variant."
+    },
+    {
+      "path": "tables/kmeans_k_sweep_metrics.csv",
+      "title": "K-Means internal metrics by number of clusters",
+      "type": "csv",
+      "description": "Silhouette, Calinski-Harabasz and Davies-Bouldin scores for K-Means across the swept k range (2-12), for both TTL variants."
+    },
+    {
+      "path": "tables/ward_k_sweep_metrics.csv",
+      "title": "Ward agglomerative internal metrics by number of clusters",
+      "type": "csv",
+      "description": "Silhouette, Calinski-Harabasz and Davies-Bouldin scores for Ward agglomerative clustering, cut at each k from one linkage matrix per variant."
+    },
+    {
+      "path": "tables/dbscan_parameters.csv",
+      "title": "DBSCAN neighbourhood parameters and the rule that selected them",
+      "type": "csv",
+      "description": "eps and min_samples per variant, and the deterministic rule (normalised-chord knee) used to select eps."
+    },
+    {
+      "path": "tables/dbscan_cluster_summary.csv",
+      "title": "DBSCAN cluster sizes including the noise label",
+      "type": "csv",
+      "description": "Row count per DBSCAN cluster per variant; cluster -1 is the noise label."
+    },
+    {
+      "path": "tables/spectral_cluster_summary.csv",
+      "title": "Spectral cluster sizes on the 5,000-row subsample",
+      "type": "csv",
+      "description": "Row count per spectral cluster per variant, on the nested 5,000-row stratified subsample."
+    },
+    {
+      "path": "tables/internal_metrics_by_method.csv",
+      "title": "Internal validation metrics for all four methods",
+      "type": "csv",
+      "description": "Silhouette, Calinski-Harabasz and Davies-Bouldin for each method's selected clustering, both variants."
+    },
+    {
+      "path": "tables/projection_trustworthiness.csv",
+      "title": "Trustworthiness of each 2D projection",
+      "type": "csv",
+      "description": "Trustworthiness (n_neighbors=5) of PCA, t-SNE and UMAP against the full feature space, on a nested 2000-row stratified subsample."
+    },
+    {
+      "path": "tables/external_validation_metrics.csv",
+      "title": "Adjusted Rand Index and Normalised Mutual Information against both references",
+      "type": "csv",
+      "description": "ARI and NMI of each method's cluster labels against attack_cat and label, both TTL variants."
+    },
+    {
+      "path": "tables/cluster_attack_cat_contingency.csv",
+      "title": "Cluster by attack category contingency table for the chosen method",
+      "type": "csv",
+      "description": "Row count per (cluster, attack_cat) cell for each variant's best method."
+    },
+    {
+      "path": "tables/cluster_attack_cat_purity.csv",
+      "title": "Dominant attack category and purity per cluster",
+      "type": "csv",
+      "description": "Dominant attack_cat class and its purity fraction per cluster, for each variant's best method."
+    },
+    {
+      "path": "tables/stability_pairwise_ari.csv",
+      "title": "Pairwise Adjusted Rand Index between bootstrap reruns",
+      "type": "csv",
+      "description": "ARI between every pair of 5 seeded 80%-resample K-Means reruns at k*, scored on shared rows."
+    },
+    {
+      "path": "tables/stability_summary.csv",
+      "title": "Bootstrap stability summary per variant",
+      "type": "csv",
+      "description": "Repeat count and the mean, minimum and maximum pairwise ARI across bootstrap reruns."
+    },
+    {
+      "path": "tables/pipeline_comparison.csv",
+      "title": "Reduce-then-cluster against cluster-then-reduce on shared metrics",
+      "type": "csv",
+      "description": "K-Means selected k and its silhouette, this notebook (cluster-then-reduce) against notebook 01 (reduce-then-cluster), where available."
+    }
+  ],
+  "figures": [
+    {
+      "path": "figures/kmeans_internal_metrics_by_k.png",
+      "title": "K-Means internal metrics by number of clusters",
+      "type": "png",
+      "description": "Silhouette, Calinski-Harabasz and Davies-Bouldin against k for K-Means, both TTL variants; the ringed marker is the selected k*."
+    },
+    {
+      "path": "figures/ward_internal_metrics_by_k.png",
+      "title": "Ward agglomerative internal metrics by number of clusters",
+      "type": "png",
+      "description": "Silhouette, Calinski-Harabasz and Davies-Bouldin against k for Ward agglomerative clustering, both TTL variants; the ringed marker is the selected k*."
+    },
+    {
+      "path": "figures/dbscan_k_distance_plot.png",
+      "title": "DBSCAN k-distance curve and selected eps",
+      "type": "png",
+      "description": "Sorted k-distance curve per variant with the deterministic normalised-chord knee eps marked as a dashed line."
+    },
+    {
+      "path": "figures/spectral_cluster_sizes.png",
+      "title": "Spectral cluster sizes, 5,000-row subsample",
+      "type": "png",
+      "description": "Grouped bar chart of spectral cluster sizes per variant on the nested 5,000-row subsample."
+    },
+    {
+      "path": "figures/internal_metrics_by_method_figure.png",
+      "title": "Internal validation metrics for all four methods",
+      "type": "png",
+      "description": "Grouped bar chart of silhouette, Calinski-Harabasz and Davies-Bouldin per method and variant; the Calinski-Harabasz panel uses a log scale when its range exceeds two orders of magnitude."
+    },
+    {
+      "path": "figures/pca_projection_by_cluster.png",
+      "title": "PCA projection coloured by K-Means cluster at k*",
+      "type": "png",
+      "description": "PCA projection coloured by K-Means cluster at k*. Coloured by the K-Means partition at k*, which is defined over every subsample row."
+    },
+    {
+      "path": "figures/pca_projection_by_attack_cat.png",
+      "title": "PCA projection coloured by attack category",
+      "type": "png",
+      "description": "PCA projection coloured by attack category"
+    },
+    {
+      "path": "figures/tsne_projection_by_cluster.png",
+      "title": "t-SNE projection coloured by K-Means cluster at k*",
+      "type": "png",
+      "description": "t-SNE projection coloured by K-Means cluster at k*. Coloured by the K-Means partition at k*, which is defined over every subsample row."
+    },
+    {
+      "path": "figures/tsne_projection_by_attack_cat.png",
+      "title": "t-SNE projection coloured by attack category",
+      "type": "png",
+      "description": "t-SNE projection coloured by attack category"
+    },
+    {
+      "path": "figures/umap_projection_by_cluster.png",
+      "title": "UMAP projection coloured by K-Means cluster at k*",
+      "type": "png",
+      "description": "UMAP projection coloured by K-Means cluster at k*. Coloured by the K-Means partition at k*, which is defined over every subsample row."
+    },
+    {
+      "path": "figures/umap_projection_by_attack_cat.png",
+      "title": "UMAP projection coloured by attack category",
+      "type": "png",
+      "description": "UMAP projection coloured by attack category"
+    },
+    {
+      "path": "figures/external_validation_by_method.png",
+      "title": "External validation metrics by method",
+      "type": "png",
+      "description": "ARI and NMI against attack_cat and label, grouped by method and variant."
+    },
+    {
+      "path": "figures/cluster_attack_cat_heatmap.png",
+      "title": "Cluster by attack category heatmap, row-normalised",
+      "type": "png",
+      "description": "Row-normalised heatmap of cluster membership by attack category, for each variant's best method."
+    },
+    {
+      "path": "figures/stability_ari_distribution.png",
+      "title": "Bootstrap stability: pairwise ARI distribution",
+      "type": "png",
+      "description": "Box plot with jittered points of the 10 pairwise ARI values per variant across 5 bootstrap reruns."
+    },
+    {
+      "path": "figures/pipeline_comparison_metrics.png",
+      "title": "Cluster-then-reduce vs reduce-then-cluster: K-Means silhouette at selected k",
+      "type": "png",
+      "description": "Grouped bars comparing this notebook's cluster-then-reduce silhouette against notebook 01's reduce-then-cluster silhouette, or a single annotation when notebook 01 has not run."
+    }
+  ],
+  "metrics": [
+    {
+      "name": "subsample_rows",
+      "value": 10000,
+      "description": "Rows in the seed-42 stratified subsample used for every clustering call in this notebook."
+    },
+    {
+      "name": "subsample_classes",
+      "value": 10,
+      "description": "Number of attack_cat classes present in the subsample."
+    },
+    {
+      "name": "features_with_ttl",
+      "value": 52,
+      "description": "Preprocessed feature count for the with_ttl variant."
+    },
+    {
+      "name": "features_without_ttl",
+      "value": 50,
+      "description": "Preprocessed feature count for the without_ttl variant."
+    },
+    {
+      "name": "kmeans_selected_k_with_ttl",
+      "value": 12,
+      "description": "K-Means k* selected by argmax silhouette for variant with_ttl."
+    },
+    {
+      "name": "kmeans_silhouette_at_selected_k_with_ttl",
+      "value": 0.4052645710165401,
+      "description": "K-Means silhouette at k* for variant with_ttl."
+    },
+    {
+      "name": "kmeans_selected_k_without_ttl",
+      "value": 2,
+      "description": "K-Means k* selected by argmax silhouette for variant without_ttl."
+    },
+    {
+      "name": "kmeans_silhouette_at_selected_k_without_ttl",
+      "value": 0.3762499116957579,
+      "description": "K-Means silhouette at k* for variant without_ttl."
+    },
+    {
+      "name": "ward_selected_k_with_ttl",
+      "value": 11,
+      "description": "Ward k* selected by argmax silhouette for variant with_ttl."
+    },
+    {
+      "name": "ward_silhouette_at_selected_k_with_ttl",
+      "value": 0.38677925902655863,
+      "description": "Ward silhouette at k* for variant with_ttl."
+    },
+    {
+      "name": "ward_selected_k_without_ttl",
+      "value": 2,
+      "description": "Ward k* selected by argmax silhouette for variant without_ttl."
+    },
+    {
+      "name": "ward_silhouette_at_selected_k_without_ttl",
+      "value": 0.37587128106194184,
+      "description": "Ward silhouette at k* for variant without_ttl."
+    },
+    {
+      "name": "dbscan_cluster_count_with_ttl",
+      "value": 2,
+      "description": "Number of non-noise DBSCAN clusters for variant with_ttl."
+    },
+    {
+      "name": "dbscan_noise_fraction_with_ttl",
+      "value": 0.0116,
+      "description": "Fraction of points DBSCAN labelled as noise for variant with_ttl."
+    },
+    {
+      "name": "dbscan_eps_with_ttl",
+      "value": 5.802610231976035,
+      "description": "Selected DBSCAN eps for variant with_ttl."
+    },
+    {
+      "name": "dbscan_min_samples_with_ttl",
+      "value": 50,
+      "description": "DBSCAN min_samples for variant with_ttl."
+    },
+    {
+      "name": "dbscan_cluster_count_without_ttl",
+      "value": 2,
+      "description": "Number of non-noise DBSCAN clusters for variant without_ttl."
+    },
+    {
+      "name": "dbscan_noise_fraction_without_ttl",
+      "value": 0.0102,
+      "description": "Fraction of points DBSCAN labelled as noise for variant without_ttl."
+    },
+    {
+      "name": "dbscan_eps_without_ttl",
+      "value": 5.617708992804036,
+      "description": "Selected DBSCAN eps for variant without_ttl."
+    },
+    {
+      "name": "dbscan_min_samples_without_ttl",
+      "value": 50,
+      "description": "DBSCAN min_samples for variant without_ttl."
+    },
+    {
+      "name": "spectral_silhouette_with_ttl",
+      "value": 0.20918946939022726,
+      "description": "Spectral clustering silhouette for variant with_ttl, scored on 5000 rows."
+    },
+    {
+      "name": "spectral_silhouette_without_ttl",
+      "value": 0.5774345537595377,
+      "description": "Spectral clustering silhouette for variant without_ttl, scored on 5000 rows."
+    },
+    {
+      "name": "spectral_rows",
+      "value": 5000,
+      "description": "Row count of the nested subsample spectral clustering was fitted and scored on."
+    },
+    {
+      "name": "best_method_with_ttl",
+      "value": "kmeans",
+      "description": "Clustering method with the highest silhouette for variant with_ttl (ties broken by method name ascending)."
+    },
+    {
+      "name": "best_method_without_ttl",
+      "value": "spectral",
+      "description": "Clustering method with the highest silhouette for variant without_ttl (ties broken by method name ascending)."
+    },
+    {
+      "name": "best_ari_attack_cat_with_ttl",
+      "value": 0.163312066567222,
+      "description": "ARI against attack_cat for the best method (kmeans) in variant with_ttl."
+    },
+    {
+      "name": "best_nmi_attack_cat_with_ttl",
+      "value": 0.2889016667582718,
+      "description": "NMI against attack_cat for the best method (kmeans) in variant with_ttl."
+    },
+    {
+      "name": "best_ari_label_with_ttl",
+      "value": 0.18256124583763803,
+      "description": "ARI against label for the best method (kmeans) in variant with_ttl."
+    },
+    {
+      "name": "best_ari_attack_cat_without_ttl",
+      "value": -0.0053125645335239235,
+      "description": "ARI against attack_cat for the best method (spectral) in variant without_ttl."
+    },
+    {
+      "name": "best_nmi_attack_cat_without_ttl",
+      "value": 0.005056265930945466,
+      "description": "NMI against attack_cat for the best method (spectral) in variant without_ttl."
+    },
+    {
+      "name": "best_ari_label_without_ttl",
+      "value": 0.002781285495731544,
+      "description": "ARI against label for the best method (spectral) in variant without_ttl."
+    },
+    {
+      "name": "stability_mean_ari_with_ttl",
+      "value": 0.8111328690770175,
+      "description": "Mean pairwise bootstrap ARI for K-Means at k* for variant with_ttl."
+    },
+    {
+      "name": "stability_mean_ari_without_ttl",
+      "value": 0.997817117152543,
+      "description": "Mean pairwise bootstrap ARI for K-Means at k* for variant without_ttl."
+    },
+    {
+      "name": "stability_repeats",
+      "value": 5,
+      "description": "Number of seeded bootstrap resamples used for the stability check."
+    },
+    {
+      "name": "notebook_01_comparison_available",
+      "value": "yes",
+      "description": "Whether notebook 01's manifest.json was readable when this notebook ran."
+    },
+    {
+      "name": "runtime_seconds_total",
+      "value": 93.64645671844482,
+      "description": "Wall-clock seconds from the first config cell to this cell."
+    }
+  ],
+  "notes": [
+    {
+      "id": "dbscan_eps_not_transferable",
+      "text": "DBSCAN eps and min_samples are selected independently per variant from that variant's own k-distance curve; the value is not transferable between the with_ttl and without_ttl feature spaces."
+    },
+    {
+      "id": "spectral_is_five_thousand_rows",
+      "text": "Spectral clustering runs on a nested 5000-row stratified subsample of the 10000-row analysis population, not the full subsample; its metrics are scored on those rows only."
+    },
+    {
+      "id": "comparison_is_not_controlled",
+      "text": "Notebook 01 clusters the full partition in PCA-90 space with silhouette measured on a subsample; this notebook clusters a 10,000-row subsample in the full feature space with silhouette measured on the same rows. Different populations, different spaces -- the comparison is directional evidence, not a controlled experiment."
+    },
+    {
+      "id": "targets_never_fitted",
+      "text": "attack_cat and label are used only for subsample stratification, figure colouring, and post-hoc external validation (ARI, NMI, contingency); they never reach a fit, fit_transform or fit_predict call."
+    },
+    {
+      "id": "test_partition_never_loaded",
+      "text": "This notebook loads only the cleaned training partition (nids.data.load_clean_partitions().train). No name in its global namespace ever refers to the cleaned testing partition, enforced by an assertion cell."
+    },
+    {
+      "id": "subsample_is_the_analysis_population",
+      "text": "Every clustering, projection and stability computation runs on the seed-42 stratified subsample (at most 10000 rows, floor 50). The subsample is the analysis population itself, not an estimate of a full-partition quantity."
+    },
+    {
+      "id": "infinite_metrics_as_string",
+      "text": "Any non-finite metric value (infinite or NaN) is registered as the string 'inf', '-inf' or 'nan' instead of a floating-point value, because JSON has no native representation for infinity or NaN."
+    }
+  ]
+}

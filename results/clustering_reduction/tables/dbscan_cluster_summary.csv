@@ -1,0 +1,7 @@
+variant,cluster,rows
+with_ttl,-1,116
+with_ttl,0,9710
+with_ttl,1,174
+without_ttl,-1,102
+without_ttl,0,9724
+without_ttl,1,174

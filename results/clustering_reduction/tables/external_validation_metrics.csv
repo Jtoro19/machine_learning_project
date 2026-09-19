@@ -1,0 +1,17 @@
+variant,method,reference,ari,nmi
+with_ttl,dbscan,attack_cat,-0.010767,0.009652
+with_ttl,dbscan,label,0.002828,0.005731
+with_ttl,kmeans,attack_cat,0.163312,0.288902
+with_ttl,kmeans,label,0.182561,0.242744
+with_ttl,spectral,attack_cat,0.106018,0.306888
+with_ttl,spectral,label,0.258361,0.328199
+with_ttl,ward,attack_cat,0.180880,0.272961
+with_ttl,ward,label,0.177216,0.216706
+without_ttl,dbscan,attack_cat,-0.009811,0.009733
+without_ttl,dbscan,label,0.002530,0.005030
+without_ttl,kmeans,attack_cat,0.046988,0.064134
+without_ttl,kmeans,label,-0.000744,0.001774
+without_ttl,spectral,attack_cat,-0.005313,0.005056
+without_ttl,spectral,label,0.002781,0.012185
+without_ttl,ward,attack_cat,0.048544,0.065258
+without_ttl,ward,label,-0.000543,0.002163
