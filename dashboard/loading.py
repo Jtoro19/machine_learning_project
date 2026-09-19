@@ -136,6 +136,74 @@ class Metric:
 
 
 @dataclass(frozen=True, slots=True)
+class HeadlineSpec:
+    """One Overview headline slot: its label and where its value may be read from.
+
+    `sources` is an ordered tuple of `(notebook_id, metric_name)` candidates; the
+    first one present in the discovered manifests wins. Ordering matters: the
+    producer that owns the number comes first, and an equivalent republished by a
+    downstream notebook follows as a fallback, so a headline still fills in when
+    one notebook has not run yet.
+    """
+
+    label: str
+    sources: tuple[tuple[str, str], ...]
+
+
+@dataclass(frozen=True, slots=True)
+class HeadlineMetric:
+    """A `HeadlineSpec` resolved against a real manifest metric."""
+
+    label: str
+    notebook_id: str
+    metric: Metric
+
+    @property
+    def source(self) -> str:
+        """Provenance for the card tooltip, e.g. `classification / best_macro_f1_with_ttl`."""
+        return f"{self.notebook_id} / {self.metric.name}"
+
+
+HEADLINE_SPECS: Final[tuple[HeadlineSpec, ...]] = (
+    HeadlineSpec(
+        label="Best model",
+        sources=(("classification", "best_model_with_ttl"),),
+    ),
+    HeadlineSpec(
+        label="Best macro F1",
+        sources=(("classification", "best_macro_f1_with_ttl"),),
+    ),
+    HeadlineSpec(
+        label="Cleaned train rows",
+        sources=(
+            ("data_cleaning", "train_rows_final"),
+            ("classification", "n_train_rows"),
+        ),
+    ),
+    HeadlineSpec(
+        label="Cleaned test rows",
+        sources=(
+            ("data_cleaning", "test_rows_final"),
+            ("classification", "n_test_rows"),
+        ),
+    ),
+    HeadlineSpec(
+        label="Label-noise error floor",
+        sources=(
+            ("classification", "label_noise_error_floor_share"),
+            ("data_cleaning", "test_contradictory_share_of_retained"),
+        ),
+    ),
+)
+"""The Overview headline slots, in display order.
+
+Every slot names a manifest to read from; not one number lives here. A slot whose
+sources are all absent is simply dropped, so the headline degrades to whatever the
+notebooks that have actually run can support.
+"""
+
+
+@dataclass(frozen=True, slots=True)
 class Note:
     """A single declared free-text note, possibly a mandatory disclosure."""
 
@@ -654,6 +722,72 @@ def metrics_table(metrics: Sequence[Metric]) -> pd.DataFrame:
             "description": [metric.description for metric in metrics],
         },
         columns=["name", "value", "description"],
+    )
+
+
+def find_metric(
+    sections: Sequence[Section],
+    notebook_id: str,
+    name: str,
+) -> Metric | None:
+    """Return the metric called `name` declared by section `notebook_id`, if any.
+
+    Args:
+        sections: Every discovered section to search.
+        notebook_id: The producer folder name that should own the metric.
+        name: The exact manifest metric name.
+
+    Returns:
+        The matching `Metric`, or `None` when that section is absent, failed to
+        parse, or simply does not declare that metric. Never raises.
+    """
+    for section in sections:
+        if section.notebook_id != notebook_id:
+            continue
+        for metric in section.metrics:
+            if metric.name == name:
+                return metric
+    return None
+
+
+def headline_metrics(
+    sections: Sequence[Section],
+    specs: Sequence[HeadlineSpec] = HEADLINE_SPECS,
+) -> tuple[HeadlineMetric, ...]:
+    """Resolve the Overview headline slots against the discovered manifests.
+
+    Args:
+        sections: Every discovered section.
+        specs: The slots to resolve, in display order.
+
+    Returns:
+        One `HeadlineMetric` per slot whose sources could be satisfied, in `specs`
+        order. Slots with no readable source are omitted rather than shown empty,
+        so a half-run `results/` tree yields a shorter headline instead of a row
+        of blanks. Returns `()` when nothing resolves. Never raises.
+    """
+    resolved: list[HeadlineMetric] = []
+    for spec in specs:
+        for notebook_id, name in spec.sources:
+            metric = find_metric(sections, notebook_id, name)
+            if metric is None:
+                continue
+            resolved.append(
+                HeadlineMetric(label=spec.label, notebook_id=notebook_id, metric=metric)
+            )
+            break
+    return tuple(resolved)
+
+
+def headline_rows(
+    headlines: Sequence[HeadlineMetric],
+    per_row: int = METRICS_PER_ROW,
+) -> tuple[tuple[HeadlineMetric, ...], ...]:
+    """Chunk resolved headline slots into the same at-most-`per_row` grid as the sections."""
+    width = max(1, per_row)
+    return tuple(
+        tuple(headlines[start : start + width])
+        for start in range(0, len(headlines), width)
     )
 
 

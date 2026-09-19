@@ -21,6 +21,7 @@ import streamlit as st
 from dashboard.loading import (
     METRICS_PER_ROW,
     Artifact,
+    HeadlineMetric,
     Metric,
     Section,
     SectionStatus,
@@ -28,6 +29,8 @@ from dashboard.loading import (
     discover_sections,
     find_model_comparison,
     format_metric_display,
+    headline_metrics,
+    headline_rows,
     is_numeric_metric,
     load_table,
     metric_label,
@@ -61,7 +64,12 @@ def _render_status_banner(section: Section) -> None:
         st.error(detail)
 
 
-def _render_metric_card(metric: Metric) -> None:
+def _render_metric_card(
+    metric: Metric,
+    *,
+    label: str | None = None,
+    help_text: str | None = None,
+) -> None:
     """Render one metric inside its column: an `st.metric` card, or a text badge.
 
     Numeric metrics get a real `st.metric` card. Non-numeric ones (the leakage
@@ -69,13 +77,23 @@ def _render_metric_card(metric: Metric) -> None:
     badge line instead, because `st.metric` is built for measurements and renders
     a bare identifier as a cramped headline. Either way the human-readable label
     is what is shown and the technical manifest name lives in the help tooltip.
+
+    Args:
+        metric: The metric to draw.
+        label: Overrides the label derived from `metric.name`. The Overview
+            headline uses this to say "Best macro F1" rather than
+            "Best macro F1 with TTL".
+        help_text: Overrides the tooltip. The Overview headline uses it to name
+            the producing manifest too, since a headline card is read far from
+            the section it came from.
     """
-    label = metric_label(metric.name)
+    shown_label = label if label is not None else metric_label(metric.name)
+    shown_help = help_text if help_text is not None else metric.name
     value = format_metric_display(metric)
     if is_numeric_metric(metric):
-        st.metric(label=label, value=value, help=metric.name, border=True)
+        st.metric(label=shown_label, value=value, help=shown_help, border=True)
         return
-    st.markdown(f"**{label}**  \n`{value}`", help=metric.name)
+    st.markdown(f"**{shown_label}**  \n`{value}`", help=shown_help)
 
 
 def _render_metric_row(row: tuple[Metric, ...]) -> None:
@@ -171,8 +189,49 @@ def render_section(section: Section) -> None:
     _render_figures(section)
 
 
+def _render_headline_row(row: tuple[HeadlineMetric, ...]) -> None:
+    """Render one grid row of Overview headline cards, then their source captions.
+
+    Reuses `_render_metric_card` so a headline card looks and behaves exactly like
+    a section card, but overrides the label with the slot's curated wording and
+    the tooltip with `<notebook_id> / <metric_name>`. On Overview the provenance
+    matters: the reader is far from the section the number came from.
+    """
+    columns = st.columns(len(row))
+    for column, headline in zip(columns, row, strict=True):
+        with column:
+            _render_metric_card(
+                headline.metric,
+                label=headline.label,
+                help_text=headline.source,
+            )
+    for headline in row:
+        if headline.metric.description:
+            st.caption(f"**{headline.label}** — {headline.metric.description}")
+
+
+def _render_headline(sections: tuple[Section, ...]) -> None:
+    """Render the Overview headline grid, reading every value from the manifests.
+
+    Renders nothing when no slot resolves, which is what happens before any
+    notebook has run. The grid obeys `METRICS_PER_ROW` exactly like the section
+    pages, so the five slots wrap as 4 + 1 rather than being squeezed into one row.
+    """
+    headlines = headline_metrics(sections)
+    if not headlines:
+        return
+    st.subheader("Headline")
+    for row in headline_rows(headlines, METRICS_PER_ROW):
+        _render_headline_row(row)
+
+
 def render_overview(sections: tuple[Section, ...]) -> None:
-    """Render the Overview page: mandatory disclosures, section listing, results root."""
+    """Render the Overview page: disclosures, headline grid, section listing, results root.
+
+    The mandatory disclosures stay above the headline on purpose. The headline is
+    the flattering number; the disclosures are the reasons it must not be read as
+    a benchmark result. Demoting the warnings beneath the score would invert that.
+    """
     st.title("UNSW-NB15 — Results Dashboard")
 
     for section, note in disclosure_notes(sections):
@@ -183,6 +242,9 @@ def render_overview(sections: tuple[Section, ...]) -> None:
         st.caption(f"Results root: {paths.results_root()}")
         return
 
+    _render_headline(sections)
+
+    st.subheader("Sections")
     rows = [
         {
             "section": section.notebook_id,
