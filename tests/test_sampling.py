@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from nids.sampling import stratified_subsample
+from nids.sampling import _largest_remainder_allocation, stratified_subsample
 
 
 @pytest.fixture
@@ -196,3 +196,57 @@ def test_floored_classes_lists_only_floor_affected_labels(wide_frame: pd.DataFra
     result = stratified_subsample(wide_frame, max_rows=100, floor=5, seed=42)
     assert "class_00" in result.floored_classes
     assert "class_01" not in result.floored_classes
+
+
+def test_int64_stratify_column_returns_non_empty_correctly_allocated_subsample() -> None:
+    """Round-5 review finding 3 regression: an int64 `stratify_by` column (e.g.
+    UNSW-NB15's `label`) previously made `available` silently all-zero (labels were
+    stringified before the `df[stratify_by] == label` mask, so the comparison never
+    matched an int64 column), and `stratified_subsample` returned an EMPTY frame
+    with no exception. `--target label` is a legitimate binary UNSW-NB15 invocation,
+    so this proves the fix on a non-string dtype end to end, not just on the
+    string-labeled `wide_frame` every other test in this module uses."""
+    rng = np.random.default_rng(42)
+    n_rows = 1000
+    # An int64 binary column, 70/30 split -- mirrors UNSW-NB15's `label` shape
+    # (imbalanced binary target) closely enough to prove the fix, without needing
+    # the real dataset.
+    values = np.array([0] * 700 + [1] * 300)
+    rng.shuffle(values)
+    df = pd.DataFrame({"row_id": np.arange(n_rows), "label": values})
+    assert df["label"].dtype == np.int64
+
+    # floor=0 keeps this a pure proportional allocation, so the exact 70/30 split
+    # (a round multiple of `max_rows`) is directly checkable below.
+    result = stratified_subsample(df, stratify_by="label", max_rows=100, floor=0, seed=42)
+
+    assert len(result.data) == 100
+    assert result.total_rows == 100
+    assert sum(allocation.allocated for allocation in result.allocations) == 100
+    by_label = {allocation.label: allocation for allocation in result.allocations}
+    assert set(by_label) == {"0", "1"}
+    # Every class actually has rows allocated, proportional to its 70/30 share,
+    # proving this is a real, non-empty, correctly-proportioned subsample -- not
+    # just a non-empty frame by accident.
+    assert by_label["0"].allocated == 70
+    assert by_label["1"].allocated == 30
+    assert by_label["0"].available == 700
+    assert by_label["1"].available == 300
+    # And the selected rows genuinely carry the original int64 label values.
+    assert set(result.data["label"].unique().tolist()) == {0, 1}
+    assert result.data["label"].dtype == np.int64
+
+
+def test_largest_remainder_allocation_raises_instead_of_silently_returning_empty() -> None:
+    """Round-5 review finding 3 regression: the exact failure mode was `available`
+    under-counting every class (summing to less than `max_rows`), which starved the
+    floor/proportional/deficit passes so badly that `_largest_remainder_allocation`
+    returned an allocation summing to 0 instead of `max_rows`, with no exception.
+    This directly proves the added invariant check: an under-counted `available`
+    now raises `ValueError` instead of silently returning a short (here, all-zero)
+    allocation."""
+    available = {"class_00": 0, "class_01": 0}
+    with pytest.raises(ValueError, match="do not sum to max_rows"):
+        _largest_remainder_allocation(
+            available, ["class_00", "class_01"], max_rows=100, floor=0
+        )

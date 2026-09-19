@@ -16,7 +16,7 @@ import pytest
 import nids.preprocessing as preprocessing_module
 from nids.cleaning import CleaningResult
 from nids.columns import TTL_SHORTCUT_COLUMNS, feature_columns, numeric_feature_columns
-from nids.preprocessing import build_preprocessor, build_preprocessor_pair
+from nids.preprocessing import build_generic_preprocessor, build_preprocessor, build_preprocessor_pair
 
 
 def test_fit_train_transform_test_shapes_agree(cleaned: CleaningResult) -> None:
@@ -139,6 +139,39 @@ def test_build_preprocessor_raises_on_overlapping_routing_groups(
     monkeypatch.setattr(preprocessing_module, "RARE_GROUPED_COLUMNS", ("proto", "dur"))
     with pytest.raises(ValueError, match="routing groups overlap"):
         preprocessing_module.build_preprocessor()
+
+
+def test_build_generic_preprocessor_fits_and_transforms_numeric_and_categorical() -> None:
+    """`build_generic_preprocessor` (moved here from `skills/_shared/common.py` per
+    AGENTS.md's "shared preprocessing lives in src/") median-imputes/scales numeric
+    columns and rare-groups/one-hot-encodes categorical columns, dropping any column
+    named in neither list via `remainder="drop"`."""
+    frame = pd.DataFrame(
+        {
+            "num1": [1.0, 2.0, np.nan, 4.0],
+            "cat1": ["a", "a", "b", "rare"],
+            "unused": [1, 2, 3, 4],
+        }
+    )
+    pipeline = build_generic_preprocessor(
+        numeric_columns=["num1"], categorical_columns=["cat1"]
+    )
+    transformed = pipeline.fit_transform(frame)
+    assert transformed.shape[0] == len(frame)
+
+    feature_names = list(pipeline.named_steps["features"].get_feature_names_out())
+    assert "num1" in feature_names
+    assert not any(name.startswith("unused") for name in feature_names)
+    assert not np.isnan(transformed).any()
+
+
+def test_build_generic_preprocessor_with_only_numeric_columns() -> None:
+    """An empty `categorical_columns` list must not raise -- the `ColumnTransformer`
+    is built with only the `numeric` branch."""
+    frame = pd.DataFrame({"num1": [1.0, 2.0, 3.0]})
+    pipeline = build_generic_preprocessor(numeric_columns=["num1"], categorical_columns=[])
+    transformed = pipeline.fit_transform(frame)
+    assert transformed.shape == (3, 1)
 
 
 def test_build_preprocessor_raises_when_routing_groups_do_not_cover_selected_features(

@@ -99,3 +99,35 @@ rerunning anything.
   proportions from the subsample must disclose this distortion rather than
   present the subsample's class balance as representative of the full,
   cleaned training partition.
+
+## Skills
+
+`skills/` packages the notebook analyses as standalone, parametrized Claude Code
+skills, runnable from the command line against any tabular CSV dataset:
+
+- `skills/eda-reduction-clustering/eda_reduction_clustering.py` — summary statistics,
+  PCA(2D), and a KMeans clustering pass.
+- `skills/clustering-reduction/clustering_reduction.py` — stratified subsample (capped
+  at 10,000 rows) + KMeans vs Agglomerative clustering comparison on a PCA embedding.
+- `skills/classification/classification.py` — RandomForest classification report
+  (macro F1, balanced accuracy, confusion matrix), with an automatic with/without-TTL
+  variant when `sttl`/`ct_state_ttl` are both present in the feature set.
+
+Each script shares the same CLI contract:
+
+```bash
+uv run python skills/<skill-name>/<script>.py \
+  --dataset path/to/data.csv \
+  --target target_column_name \
+  --exclude id \
+  --output results/my_run
+```
+
+`--dataset`, `--target`, and `--output` are required; `--exclude` is repeatable and/or
+comma-separated; `--seed` defaults to 42. Run any script with `--help` for the full flag
+list. Every script writes its output following the
+[results-output-contract](openspec/changes/project-foundation/specs/results-output-contract/spec.md)
+under `--output`, reuses `nids.preprocessing.build_preprocessor` when the input dataset
+is detected to match the UNSW-NB15 raw schema, and otherwise falls back to a generic
+preprocessing pipeline built from the dataset's own detected column dtypes — see
+`skills/<skill-name>/SKILL.md` and `openspec/changes/skills/design.md` for details.

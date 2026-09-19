@@ -132,8 +132,20 @@ def stratified_subsample(
     if stratify_by not in df.columns:
         raise KeyError(f"stratify_by column {stratify_by!r} not found in df.columns.")
 
-    labels_sorted = sorted(str(value) for value in df[stratify_by].unique())
-    available = {label: int((df[stratify_by] == label).sum()) for label in labels_sorted}
+    # Round-5 review finding 3: labels were stringified for `labels_sorted`/diagnostics
+    # but then compared directly against `df[stratify_by]` for the row mask below --
+    # for a non-string (e.g. int64) `stratify_by` column, `df[stratify_by] == "0"` is
+    # always False, `available` silently becomes all-zero, and `stratified_subsample`
+    # returns an EMPTY frame with no exception. Fixed: `label_to_value` keeps the
+    # ACTUAL unique value (original dtype) for every mask comparison; only the
+    # diagnostics label text (`ClassAllocation.label`, `labels_sorted`'s ordering) is
+    # stringified. Sorting by the stringified representation preserves the existing
+    # deterministic ordering exactly as before this fix.
+    label_to_value = {str(value): value for value in df[stratify_by].unique()}
+    labels_sorted = sorted(label_to_value)
+    available = {
+        label: int((df[stratify_by] == label_to_value[label]).sum()) for label in labels_sorted
+    }
     population_rows = int(len(df))
 
     if population_rows <= max_rows:
@@ -165,7 +177,7 @@ def stratified_subsample(
     rng = np.random.default_rng(seed)
     chosen_positions: list[np.ndarray] = []
     for label in labels_sorted:
-        positions = np.flatnonzero((df[stratify_by] == label).to_numpy())
+        positions = np.flatnonzero((df[stratify_by] == label_to_value[label]).to_numpy())
         chosen_positions.append(rng.choice(positions, size=allocated[label], replace=False))
 
     sorted_positions = np.sort(np.concatenate(chosen_positions))
@@ -252,5 +264,20 @@ def _largest_remainder_allocation(
         ranked = sorted(candidates, key=lambda label: (-(exact[label] - int(exact[label])), label))
         for label in ranked[:deficit]:
             allocated[label] += 1
+
+    # Round-5 review finding 3: the mismatched-dtype bug this guards against made
+    # `available` silently all-zero, which starves the deficit pass above (every
+    # `allocated[label] < available[label]` comparison is `0 < 0`, i.e. False) and
+    # this function returned an allocation summing to 0 instead of `max_rows`, with
+    # no exception -- the root cause of `stratified_subsample` silently returning an
+    # empty frame. Fail loudly instead of ever returning a short allocation again.
+    total_allocated = sum(allocated.values())
+    if total_allocated != max_rows:
+        raise ValueError(
+            f"Internal allocation error: allocated rows ({total_allocated}) do not "
+            f"sum to max_rows ({max_rows}); available={available!r}. This indicates "
+            "`available` under-counts the input (e.g. a stratify column compared "
+            "against mismatched label types)."
+        )
 
     return allocated

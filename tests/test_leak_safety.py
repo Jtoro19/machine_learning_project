@@ -4,8 +4,22 @@
 Phase 3 added the cleaning half: `cleaning.py` defines no `fit`/
 `fit_transform` function and calls no `.fit(...)`/`.fit_transform(...)`
 method anywhere. This slice adds the preprocessing half: no public function
-in `preprocessing.py` may accept a DataFrame parameter -- the entire public
-surface is one `bool` and one no-argument function (design Decision 5).
+in `preprocessing.py` may accept a DataFrame or other array-like data
+parameter (design Decision 5).
+
+Round-3 review standards finding 4 refined this guard: the original rule was
+"every public parameter must be annotated `bool`, or the function takes no
+parameters" -- blunt enough that `nids.preprocessing.build_generic_preprocessor`
+(whose two parameters are `list[str]` column NAME lists, not data) could only
+comply by staying underscore-private and being re-exported under its public
+name at its one caller, which is hiding from the guard rather than satisfying
+its actual intent. The guard now checks annotation TEXT directly: it rejects
+a parameter annotated as a DataFrame/Series/ndarray/array-like type (matching
+`DataFrame`, `Series`, `ndarray`, `ArrayLike` as a substring, or an `npt.`
+prefix), while explicitly permitting `bool` and a `list[str]`-shaped
+annotation -- so a column-NAME-list parameter is recognized as not being data,
+without opening the door to an actual DataFrame/array parameter under a
+different annotation spelling.
 """
 
 import ast
@@ -19,7 +33,31 @@ _FORBIDDEN_PARAMETER_NAMES = frozenset({"X", "test", "X_test", "df", "test_df"})
 """Parameter names that would signal a hidden data-fitting path."""
 
 _DATAFRAME_ANNOTATION_NAMES = frozenset({"DataFrame", "pd.DataFrame", "pandas.DataFrame"})
-"""Type-annotation spellings that name a DataFrame, in source order they might appear."""
+"""Type-annotation spellings that name a DataFrame. A `frozenset` has no inherent
+order; these are simply the spellings this codebase's signatures might use."""
+
+_ALLOWED_NON_DATA_ANNOTATIONS = frozenset({"bool", "list[str]"})
+"""Annotation text explicitly known to be safe (not data): a plain `bool` toggle, or a
+`list[str]` of column NAMES (never the data itself)."""
+
+_FORBIDDEN_ANNOTATION_SUBSTRINGS = ("DataFrame", "Series", "ndarray", "ArrayLike")
+"""Any of these appearing anywhere in a parameter's annotation text names a
+DataFrame/Series/ndarray/array-like data type, regardless of module prefix
+(`pd.DataFrame`, `pandas.Series`, `np.ndarray`, `npt.ArrayLike`, ...)."""
+
+_FORBIDDEN_ANNOTATION_PREFIXES = ("npt.",)
+"""Annotation text starting with any of these names a `numpy.typing` array-like
+shape (for example `npt.NDArray[...]`) even when it doesn't literally spell
+`ndarray`/`ArrayLike`."""
+
+
+def _is_forbidden_data_annotation(annotation_name: str) -> bool:
+    """True when `annotation_name` textually names a DataFrame/Series/ndarray/
+    array-like type -- the refined guard's rejection rule (round-3 review
+    standards finding 4)."""
+    return any(
+        token in annotation_name for token in _FORBIDDEN_ANNOTATION_SUBSTRINGS
+    ) or any(annotation_name.startswith(prefix) for prefix in _FORBIDDEN_ANNOTATION_PREFIXES)
 
 
 def _cleaning_module_path() -> Path:
@@ -95,9 +133,12 @@ def test_cleaning_classes_define_no_fit_method() -> None:
 def _annotation_name(annotation: ast.expr | None) -> str | None:
     """Best-effort textual name of a parameter's type annotation.
 
-    Handles the two shapes this codebase's public signatures actually use:
-    a bare name (`bool`) and a dotted attribute (`pd.DataFrame`). Returns
-    `None` when there is no annotation at all.
+    Handles every shape this codebase's public signatures actually use: a
+    bare name (`bool`), a dotted attribute (`pd.DataFrame`), and a
+    subscripted generic (`list[str]`, `npt.NDArray[np.float64]`) -- the last
+    one added for the round-3 refined guard, so a `list[str]` parameter (a
+    column NAME list, not data) renders as readable text instead of falling
+    through to `ast.dump`. Returns `None` when there is no annotation at all.
     """
     if annotation is None:
         return None
@@ -109,6 +150,10 @@ def _annotation_name(annotation: ast.expr | None) -> str | None:
         return f"{prefix}.{annotation.attr}"
     if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
         return annotation.value
+    if isinstance(annotation, ast.Subscript):
+        base = _annotation_name(annotation.value) or ast.dump(annotation.value)
+        inner = _annotation_name(annotation.slice) or ast.dump(annotation.slice)
+        return f"{base}[{inner}]"
     return ast.dump(annotation)
 
 
@@ -166,11 +211,16 @@ def _all_parameters(
     return parameters
 
 
-def test_preprocessing_public_functions_take_no_dataframe_parameter() -> None:
-    """No public function in `preprocessing.py` may accept a DataFrame or any
-    other data parameter (design Decision 5): every parameter of every
-    public, module-level function MUST be annotated `bool`, or the function
-    MUST take no parameters at all.
+def test_preprocessing_public_functions_reject_data_shaped_parameters() -> None:
+    """No public function in `preprocessing.py` may accept a DataFrame, Series,
+    ndarray, or other array-like data parameter (design Decision 5). Refined in
+    round 3 (standards finding 4) from a blunt "every parameter must be `bool`"
+    rule to a precise one: every parameter of every public, module-level
+    function MUST be annotated `bool`, a `list[str]`-shaped column-NAME list,
+    or MUST NOT be annotated as a DataFrame/Series/ndarray/array-like type
+    (`_is_forbidden_data_annotation`) -- and the function MAY also take no
+    parameters at all. An unannotated parameter still violates the rule: this
+    guard only recognizes a parameter as safe when its annotation says so.
 
     Hard constraint (preprocessing-pipeline spec -- "The preprocessing
     surface exposes no test-fitting path").
@@ -187,15 +237,67 @@ def test_preprocessing_public_functions_take_no_dataframe_parameter() -> None:
                 violations.append(f"{func.name}({parameter.arg}: forbidden parameter name)")
                 continue
             annotation_name = _annotation_name(parameter.annotation)
-            if annotation_name != "bool":
+            if annotation_name in _ALLOWED_NON_DATA_ANNOTATIONS:
+                continue
+            if annotation_name is None or _is_forbidden_data_annotation(annotation_name):
                 violations.append(
-                    f"{func.name}({parameter.arg}: {annotation_name!r}, expected 'bool')"
+                    f"{func.name}({parameter.arg}: {annotation_name!r}, "
+                    "expected 'bool' or 'list[str]', or a non-data annotation)"
                 )
 
     assert not violations, (
-        "preprocessing.py has a public function parameter that is not a bool "
-        f"(or the function is not parameter-free): {violations}"
+        "preprocessing.py has a public function parameter that looks like a "
+        f"DataFrame/array-like data parameter, or is unannotated: {violations}"
     )
+
+
+def test_refined_guard_still_catches_a_dataframe_annotated_parameter() -> None:
+    """Regression proof for the round-3 refinement: widening the guard to permit
+    `bool`/`list[str]` must not accidentally also permit an actual DataFrame (or
+    Series/ndarray/array-like) parameter under some other annotation spelling.
+    Proven against a synthetic module, since `preprocessing.py` itself defines
+    no such function."""
+    source = (
+        "import pandas as pd\n"
+        "import numpy as np\n"
+        "import numpy.typing as npt\n\n"
+        "def safe_bool(flag: bool) -> None:\n"
+        "    ...\n\n"
+        "def safe_columns(names: list[str]) -> None:\n"
+        "    ...\n\n"
+        "def leaks_dataframe(frame: pd.DataFrame) -> None:\n"
+        "    ...\n\n"
+        "def leaks_series(values: pd.Series) -> None:\n"
+        "    ...\n\n"
+        "def leaks_ndarray(values: np.ndarray) -> None:\n"
+        "    ...\n\n"
+        "def leaks_array_like(values: npt.ArrayLike) -> None:\n"
+        "    ...\n\n"
+        "def leaks_ndarray_typed(values: npt.NDArray[np.float64]) -> None:\n"
+        "    ...\n"
+    )
+    tree = ast.parse(source, filename="<synthetic>")
+    functions = _public_module_level_functions(tree)
+
+    violations: list[str] = []
+    for func, is_method in functions:
+        for parameter in _all_parameters(func, is_method=is_method):
+            annotation_name = _annotation_name(parameter.annotation)
+            if annotation_name in _ALLOWED_NON_DATA_ANNOTATIONS:
+                continue
+            if annotation_name is None or _is_forbidden_data_annotation(annotation_name):
+                violations.append(f"{func.name}({parameter.arg}: {annotation_name})")
+
+    violating_functions = {entry.split("(")[0] for entry in violations}
+    assert violating_functions == {
+        "leaks_dataframe",
+        "leaks_series",
+        "leaks_ndarray",
+        "leaks_array_like",
+        "leaks_ndarray_typed",
+    }
+    assert "safe_bool" not in violating_functions
+    assert "safe_columns" not in violating_functions
 
 
 def test_preprocessing_public_functions_have_no_dataframe_annotation_anywhere() -> None:
@@ -293,10 +395,10 @@ def test_cleaning_report_never_fits_on_the_test_partition() -> None:
         # Require the argument's own root to be a `.train` attribute access,
         # so only a train partition (optionally subscripted or column-selected)
         # can be fitted.
-        root: ast.AST = argument
-        while isinstance(root, (ast.Subscript, ast.Call)):
-            root = root.func if isinstance(root, ast.Call) else root.value
-        is_train_rooted = isinstance(root, ast.Attribute) and root.attr == "train"
+        node_root: ast.AST = argument
+        while isinstance(node_root, (ast.Subscript, ast.Call)):
+            node_root = node_root.func if isinstance(node_root, ast.Call) else node_root.value
+        is_train_rooted = isinstance(node_root, ast.Attribute) and node_root.attr == "train"
         if not is_train_rooted:
             violations.append(f"line {node.lineno}: {func.attr}({source}) is not train-rooted")
 

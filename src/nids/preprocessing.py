@@ -1,11 +1,16 @@
-"""Factory for the project's one fitted preprocessing pipeline.
+"""Factory for the project's fitted preprocessing pipelines.
 
-No function in this module accepts a DataFrame or any data parameter at all
-(design Decision 5) -- the entire public surface is one `bool` and one
-no-argument function. A caller who wants to fit must write
-`preprocessor.fit(cleaned.train[feature_columns()])` itself, naming the frame
-at the call site, which is precisely the line the AGENTS.md review checklist
-looks for.
+No function in this module accepts a DataFrame or any other array-like data
+parameter (design Decision 5, refined by round-3 review standards finding 4):
+every public parameter is either `bool`, a `list[str]` of column NAMES (never
+the data itself), or the function takes no parameters at all. A caller who
+wants to fit must write `preprocessor.fit(cleaned.train[feature_columns()])`
+itself, naming the frame at the call site, which is precisely the line the
+AGENTS.md review checklist looks for. The frozen `build_preprocessor()`/
+`build_preprocessor_pair()` surface -- one `bool`, or no arguments at all --
+is unchanged; `build_generic_preprocessor()` additionally takes the caller's
+own numeric/categorical column NAME lists, which name columns, not data (see
+its own docstring and `tests/test_leak_safety.py`'s refined AST guard).
 
     pipe = build_preprocessor()
     pipe.fit(cleaned.train[feature_columns()])
@@ -14,10 +19,12 @@ looks for.
 
 import numpy as np
 from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler
 
 from nids.columns import (
+    RARE_CATEGORY_THRESHOLD,
     RARE_GROUPED_COLUMNS,
     feature_columns,
     numeric_feature_columns,
@@ -109,6 +116,84 @@ def build_preprocessor(include_ttl_features: bool = True) -> Pipeline:
         ],
         remainder="drop",
         verbose_feature_names_out=False,
+    )
+    return Pipeline([("features", column_transformer)])
+
+
+def build_generic_preprocessor(
+    numeric_columns: list[str], categorical_columns: list[str]
+) -> Pipeline:
+    """Build a dataset-agnostic preprocessing pipeline.
+
+    Unlike `build_preprocessor`, this accepts the numeric/categorical column
+    split directly instead of deriving it from the frozen UNSW-NB15 column
+    allow-lists, so it can preprocess any tabular dataset whose columns were
+    not detected as the UNSW-NB15 raw schema (see `nids.tabular.
+    build_preprocessor_for`, which routes between the two).
+
+    PUBLIC (round-3 review standards finding 4): a previous revision kept this
+    underscore-prefixed and re-exported it under this same name at its one
+    caller, purely so `tests/test_leak_safety.py::
+    test_preprocessing_public_functions_reject_data_shaped_parameters`'s
+    blunt "every public parameter must be `bool`" rule would not see it --
+    that was hiding from the guard, not complying with design Decision 5's
+    actual intent ("no function accepts a DataFrame or any data parameter").
+    The guard is now precise: it rejects parameters annotated as a DataFrame/
+    Series/ndarray/array-like type by annotation text, while explicitly
+    permitting `bool` and a `list[str]` of column NAMES -- which is exactly
+    this function's signature, so it stays public and is imported by its
+    caller under its own name (AGENTS.md: "Shared preprocessing lives in
+    src/" -- moved from `skills/_shared/common.py`, never duplicated).
+
+    Args:
+        numeric_columns: Feature columns to impute (median) and scale.
+        categorical_columns: Feature columns to impute (constant "missing"),
+            rare-group (reusing `nids.transformers.RareCategoryGrouper`), and
+            one-hot encode.
+
+    Returns:
+        An unfitted scikit-learn `Pipeline` wrapping a `ColumnTransformer`,
+        with `remainder="drop"` so any column outside the two supplied lists
+        is dropped.
+    """
+    transformers = []
+    if numeric_columns:
+        transformers.append(
+            (
+                "numeric",
+                Pipeline(
+                    [
+                        ("impute", SimpleImputer(strategy="median")),
+                        ("scale", StandardScaler()),
+                    ]
+                ),
+                numeric_columns,
+            )
+        )
+    if categorical_columns:
+        transformers.append(
+            (
+                "categorical",
+                Pipeline(
+                    [
+                        (
+                            "impute",
+                            SimpleImputer(
+                                strategy="constant", fill_value="missing"
+                            ).set_output(transform="pandas"),
+                        ),
+                        ("group_rare", RareCategoryGrouper(threshold=RARE_CATEGORY_THRESHOLD)),
+                        (
+                            "onehot",
+                            OneHotEncoder(handle_unknown="ignore", sparse_output=False),
+                        ),
+                    ]
+                ),
+                categorical_columns,
+            )
+        )
+    column_transformer = ColumnTransformer(
+        transformers=transformers, remainder="drop", verbose_feature_names_out=False
     )
     return Pipeline([("features", column_transformer)])
 
