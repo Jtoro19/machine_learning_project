@@ -1,0 +1,21 @@
+[project]
+name = "machine-learning-project"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "ipykernel>=7.3.0",
+    "jupyterlab>=4.6.3",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.3",
+    "pandas>=3.0.6",
+    "pyarrow>=25.0.1",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.18.1",
+    "seaborn>=0.13.2",
+    "umap-learn>=0.5.12",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
