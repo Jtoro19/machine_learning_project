@@ -15,7 +15,20 @@ along with every declared dependency.
 
 ## Data acquisition
 
-_Placeholder — filled in during the data-access slice._
+This project uses the official UNSW-NB15 training and testing partitions. The
+dataset is **not** bundled with the repository and is **never downloaded
+automatically** — no module under `src/nids/` performs a network request.
+
+1. Download the UNSW-NB15 dataset from UNSW Canberra Cyber's official source.
+2. Save the training partition as `UNSW_NB15_training-set.csv`.
+3. Save the testing partition as `UNSW_NB15_testing-set.csv`.
+4. Place both files under `data/raw/` at the repository root. `data/raw/` is
+   read-only to this package: nothing here writes to, renames, or otherwise
+   modifies files under it.
+
+Run `uv run python -m nids.validation` to confirm both files are present and
+correctly shaped. If a file is missing or malformed, the command prints these
+same instructions and exits with a non-zero status instead of guessing.
 
 ## Running notebooks
 
