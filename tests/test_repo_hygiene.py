@@ -191,3 +191,32 @@ def test_no_write_mode_open_under_raw() -> None:
         "Write-intent call(s) found in a scope that also calls raw_data_dir() "
         "(module: finding): " + ", ".join(violations)
     )
+
+
+def test_no_hardcoded_cleaned_partition_counts_in_slice_3_modules() -> None:
+    """Slice 3 modules and tests carry no literal cleaned-partition row count.
+
+    The generic `test_no_unexplained_large_integer_literals` scan above
+    already covers every module under `src/nids/**` and `tests/**`; this test
+    names `cleaning.py`, `data.py`, and `test_cleaning.py` explicitly (data-
+    cleaning spec — "No hardcoded cleaned-partition row counts") so a
+    regression here is reported without cross-referencing the generic scan,
+    and `ALLOWED_LARGE_LITERALS` stays scoped to `validation.py`'s three
+    literals only -- no entry is added for any slice-3 module.
+    """
+    root = repo_root()
+    targets = ("src/nids/cleaning.py", "src/nids/data.py", "tests/test_cleaning.py")
+    violations: list[str] = []
+    for relative in targets:
+        path = root / relative
+        assert path.is_file(), f"expected slice-3 module missing: {relative}"
+        allowed = ALLOWED_LARGE_LITERALS.get(relative, frozenset())
+        assert not allowed, f"{relative} must not appear in ALLOWED_LARGE_LITERALS"
+        for value in _large_int_literals(path):
+            if value not in allowed:
+                violations.append(f"{relative}: {value}")
+
+    assert not violations, (
+        "Hardcoded cleaned-partition literal(s) found (module: value): "
+        + ", ".join(violations)
+    )
