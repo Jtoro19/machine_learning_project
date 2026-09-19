@@ -1,0 +1,45 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Project: machine_learning_project (UNSW-NB15 intrusion detection analysis).
+  Stack: Python 3.14, uv-managed .venv (declared, not yet materialized).
+  Data: UNSW-NB15 CSV partitions in data/raw/ (not created yet).
+  Modeling: scikit-learn Pipelines; supervised + unsupervised (GP, spectral
+  clustering, t-SNE on <=10k stratified subsample). Seed 42 everywhere.
+  Testing: pytest declared in AGENTS.md, not yet installed or configured.
+  Repo is empty except AGENTS.md, .gitignore, .gga, .atl — no code exists.
+
+strict_tdd: false
+strict_tdd_source: "explicit user correction — disabled during gentle-ai installation"
+test_command: "pytest (declared in AGENTS.md; not yet installed/configured — no pyproject.toml or pytest config present)"
+
+rules:
+  proposal:
+    - Never propose reading, writing, or transforming raw data outside data/raw/ read-only access.
+    - Include rollback plan for risky changes.
+    - Respect the hard scope constraint history: do not assume src/, tests/, data/, results/ exist until a change explicitly creates them.
+  specs:
+    - Use Given/When/Then for scenarios.
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY).
+    - Any spec touching data preprocessing MUST restate the AGENTS.md data rules (split-first fitting, "-" service category, rare-proto grouping, dropped id/attack_cat/label, seed 42, subsample cap for GP/spectral/t-SNE).
+  design:
+    - Document architecture decisions with rationale.
+    - Call out where sttl/ct_state_ttl reporting (with and without) applies.
+  tasks:
+    - Group by phase, use hierarchical numbering.
+    - Keep tasks completable in one session.
+    - Tests are required only for code in src/ and for skill scripts, per AGENTS.md; notebooks are exploratory and do not follow RED-GREEN-REFACTOR.
+  apply:
+    guidelines:
+      - Follow AGENTS.md data rules and code conventions exactly.
+      - Shared preprocessing lives in src/; notebooks import it, never duplicate it.
+      - No hardcoded absolute paths.
+    tdd: false           # Strict TDD is disabled for this project; ordinary functional checks apply to src/ and skill scripts.
+    test_command: "pytest (not yet installed/configured)"
+  verify:
+    test_command: "pytest (not yet installed/configured)"
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas.
