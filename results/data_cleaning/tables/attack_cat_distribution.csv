@@ -1,0 +1,11 @@
+attack_cat,train_rows_before,train_rows_after,test_rows_before,test_rows_after
+Normal,56000,51890,37000,35806
+Exploits,33393,19844,11132,10954
+Fuzzers,18184,16150,6062,6018
+Reconnaissance,10491,7522,3496,2592
+Generic,40000,4181,18871,17176
+DoS,12264,3806,4089,3887
+Analysis,2000,1594,677,663
+Backdoor,1746,1535,583,579
+Shellcode,1133,1091,378,365
+Worms,130,127,44,44

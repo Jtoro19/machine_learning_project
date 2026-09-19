@@ -11,7 +11,9 @@ partition for fitting" scenarios.
 
 import numpy as np
 import pandas as pd
+import pytest
 
+import nids.preprocessing as preprocessing_module
 from nids.cleaning import CleaningResult
 from nids.columns import TTL_SHORTCUT_COLUMNS, feature_columns, numeric_feature_columns
 from nids.preprocessing import build_preprocessor, build_preprocessor_pair
@@ -123,3 +125,38 @@ def test_scaler_statistics_reflect_only_training_rows(cleaned: CleaningResult) -
     numeric_columns = numeric_feature_columns()
     expected_mean = cleaned.train[numeric_columns].mean().to_numpy()
     np.testing.assert_allclose(numeric_scaler.mean_, expected_mean, rtol=1e-8)
+
+
+def test_build_preprocessor_raises_on_overlapping_routing_groups(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`build_preprocessor`'s runtime invariant MUST raise before constructing
+    any transformer when a column would land in more than one of the
+    categorical/skewed/numeric routing groups (design's routing assertion,
+    an until-now-untested raise path). Triggered by monkeypatching
+    `RARE_GROUPED_COLUMNS` to include `dur`, which `SKEWED_COLUMNS` (and
+    therefore the `skewed` branch) already claims."""
+    monkeypatch.setattr(preprocessing_module, "RARE_GROUPED_COLUMNS", ("proto", "dur"))
+    with pytest.raises(ValueError, match="routing groups overlap"):
+        preprocessing_module.build_preprocessor()
+
+
+def test_build_preprocessor_raises_when_routing_groups_do_not_cover_selected_features(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`build_preprocessor`'s coverage invariant MUST raise when the union of
+    the three routing groups is narrower than the selected feature set
+    (design's routing assertion, an until-now-untested raise path).
+    Triggered by monkeypatching `numeric_feature_columns` to silently drop
+    one column, simulating a bad edit to `columns.py`."""
+    original_numeric_feature_columns = preprocessing_module.numeric_feature_columns
+
+    def _missing_one_column(include_ttl: bool = True) -> list[str]:
+        columns = original_numeric_feature_columns(include_ttl)
+        return columns[1:]
+
+    monkeypatch.setattr(
+        preprocessing_module, "numeric_feature_columns", _missing_one_column
+    )
+    with pytest.raises(ValueError, match="do not exactly cover"):
+        preprocessing_module.build_preprocessor()

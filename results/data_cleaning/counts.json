@@ -1,0 +1,18 @@
+{
+  "train_duplicate_rows_dropped": 67601,
+  "test_internal_duplicate_rows": 26387,
+  "test_leakage_rows_dropped": 4248,
+  "test_leakage_comparison_key": "full_row",
+  "test_contradictory_rows_retained": 4294,
+  "test_contradictory_share_of_retained": 0.05499205983300036,
+  "label_noise_floor_combinations": 1772,
+  "label_noise_floor_rows": 8472,
+  "service_dash_rows_mapped": 141321,
+  "raw_null_cells": 0,
+  "train_rows_final": 107740,
+  "test_rows_final": 78084,
+  "notes": {
+    "benchmark_non_comparability": "Removing testing rows that leak into the training partition (rows matching a training row on the comparison key) makes this project's test-set metrics non-comparable to published UNSW-NB15 benchmarks computed on the full, unmodified testing set.",
+    "retained_error_floor": "The retained feature-identical, label-contradictory testing rows are a near-certain minimum error rate that no model can eliminate: two rows with identical features but different labels cannot both be classified correctly by any function of the features alone."
+  }
+}

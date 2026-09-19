@@ -1,0 +1,111 @@
+{
+  "schema_version": "1.0",
+  "notebook_id": "data_cleaning",
+  "generated_at": "2026-09-19T07:04:45Z",
+  "tables": [
+    {
+      "path": "tables/row_counts_before_after.csv",
+      "title": "Row counts before and after each cleaning step",
+      "type": "csv",
+      "description": "Row counts per partition after each of the six ordered cleaning steps, in execution order."
+    },
+    {
+      "path": "tables/attack_cat_distribution.csv",
+      "title": "attack_cat distribution before and after cleaning",
+      "type": "csv",
+      "description": "attack_cat row counts per partition, before and after the ordered cleaning steps."
+    },
+    {
+      "path": "tables/state_distribution.csv",
+      "title": "state distribution before and after deduplication",
+      "type": "csv",
+      "description": "state row counts in the training partition, before and after exact-duplicate removal (step 3)."
+    },
+    {
+      "path": "tables/rare_categories.csv",
+      "title": "Rare categories grouped into 'other'",
+      "type": "csv",
+      "description": "Every proto/service/state category below the 1% training-frequency threshold, grouped into 'other' by RareCategoryGrouper fitted on the cleaned training partition, with its row count."
+    }
+  ],
+  "figures": [
+    {
+      "path": "figures/class_balance_before_after.png",
+      "title": "Class balance before and after cleaning",
+      "type": "png",
+      "description": "Grouped bar chart (log y-scale) of attack_cat row counts before and after cleaning, per partition."
+    }
+  ],
+  "metrics": [
+    {
+      "name": "train_duplicate_rows_dropped",
+      "value": 67601,
+      "description": "Exact-duplicate rows dropped from the training partition (step 3)."
+    },
+    {
+      "name": "test_internal_duplicate_rows",
+      "value": 26387,
+      "description": "Duplicate rows found within the testing partition itself (step 4, diagnostic only -- never dropped)."
+    },
+    {
+      "name": "test_leakage_rows_dropped",
+      "value": 4248,
+      "description": "Testing rows removed because they match a training row on the leakage comparison key (step 5)."
+    },
+    {
+      "name": "test_leakage_comparison_key",
+      "value": "full_row",
+      "description": "The leakage comparison key used for step 5: 'full_row' or 'features_only'."
+    },
+    {
+      "name": "test_contradictory_rows_retained",
+      "value": 4294,
+      "description": "Retained testing rows that match a training row on features alone but carry a different label -- feature-identical, label-contradictory rows."
+    },
+    {
+      "name": "test_contradictory_share_of_retained",
+      "value": 0.05499205983300036,
+      "description": "test_contradictory_rows_retained as a share of the retained testing set (rows_after step 5)."
+    },
+    {
+      "name": "label_noise_floor_combinations",
+      "value": 1772,
+      "description": "Distinct training feature combinations carrying more than one attack_cat value (step 6, diagnostic only)."
+    },
+    {
+      "name": "label_noise_floor_rows",
+      "value": 8472,
+      "description": "Training rows that fall inside a conflicting feature combination."
+    },
+    {
+      "name": "service_dash_rows_mapped",
+      "value": 141321,
+      "description": "Rows across both partitions where service == '-' was mapped to 'none' (step 2)."
+    },
+    {
+      "name": "raw_null_cells",
+      "value": 0,
+      "description": "Null cells found across both raw partition files by validation.validate_raw_data()."
+    },
+    {
+      "name": "train_rows_final",
+      "value": 107740,
+      "description": "Training partition row count after all cleaning steps."
+    },
+    {
+      "name": "test_rows_final",
+      "value": 78084,
+      "description": "Testing partition row count after all cleaning steps."
+    }
+  ],
+  "notes": [
+    {
+      "id": "benchmark_non_comparability",
+      "text": "Removing testing rows that leak into the training partition (rows matching a training row on the comparison key) makes this project's test-set metrics non-comparable to published UNSW-NB15 benchmarks computed on the full, unmodified testing set."
+    },
+    {
+      "id": "retained_error_floor",
+      "text": "The retained feature-identical, label-contradictory testing rows are a near-certain minimum error rate that no model can eliminate: two rows with identical features but different labels cannot both be classified correctly by any function of the features alone."
+    }
+  ]
+}

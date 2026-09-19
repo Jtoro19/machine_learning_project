@@ -6,6 +6,12 @@ without touching `data/raw/`. `tmp_results_root` isolates filesystem writes unde
 determinism tests.
 """
 
+import matplotlib
+
+matplotlib.use("Agg")  # Must run before any `matplotlib.pyplot` import anywhere in
+# the suite (for example inside `nids.cleaning_report`), so figure-writing tests
+# never depend on a display or a platform-specific GUI backend being available.
+
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path

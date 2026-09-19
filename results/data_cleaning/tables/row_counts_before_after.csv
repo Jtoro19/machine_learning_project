@@ -1,0 +1,9 @@
+step,operation,partition,rows_before,rows_after,rows_removed
+1,drop_unused_columns,train,175341,175341,0
+1,drop_unused_columns,test,82332,82332,0
+2,normalize_service,train,175341,175341,0
+2,normalize_service,test,82332,82332,0
+3,drop_train_duplicates,train,175341,107740,67601
+4,count_test_internal_duplicates,test,82332,82332,0
+5,drop_test_leakage,test,82332,78084,4248
+6,count_label_conflicts,train,107740,107740,0

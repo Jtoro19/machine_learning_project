@@ -225,3 +225,69 @@ def test_no_hardcoded_cleaned_partition_counts_in_slice_3_modules() -> None:
         "Hardcoded cleaned-partition literal(s) found (module: value): "
         + ", ".join(violations)
     )
+
+
+_FORBIDDEN_FRAME_METHODS: frozenset[str] = frozenset({"value_counts", "duplicated", "groupby"})
+"""Method names that exist only on a `pandas` `DataFrame`/`Series`; this module has
+no legitimate reason to call any of them, so any occurrence is a violation
+regardless of the receiver expression."""
+
+_FRAME_LIKE_NAMES: frozenset[str] = frozenset({"train", "test"})
+"""Identifiers a raw or cleaned partition frame is bound to (or accessed as an
+attribute of, e.g. `result.train`) anywhere in `cleaning_report.py`."""
+
+
+def _is_frame_like_expression(node: ast.expr) -> bool:
+    """True when `node` plausibly evaluates to a raw or cleaned partition frame.
+
+    Matches a bare `train`/`test` name, or a `<anything>.train`/
+    `<anything>.test` attribute access (for example `result.train`) -- the
+    only shapes a partition frame reaches `cleaning_report.py` under.
+
+    Args:
+        node: An expression node, typically a `len(...)` call argument.
+
+    Returns:
+        True if `node` is one of the two frame-like shapes above.
+    """
+    if isinstance(node, ast.Name) and node.id in _FRAME_LIKE_NAMES:
+        return True
+    return isinstance(node, ast.Attribute) and node.attr in _FRAME_LIKE_NAMES
+
+
+def test_cleaning_report_recomputes_nothing_from_a_partition_frame() -> None:
+    """`cleaning_report.py` MUST report every number from `CleaningResult`,
+    `ValidationReport`, or a fitted `RareCategoryGrouper` -- never from a
+    direct `.shape`/`.value_counts()`/`.duplicated()`/`.groupby()` access, or
+    a `len(...)` call against a raw or cleaned partition frame (design
+    Decision 2 hard constraint; results-output-contract spec -- "The
+    cleaning report is this contract's first producer").
+
+    `.shape` and the three forbidden methods are banned unconditionally
+    (this module has no legitimate non-frame use for any of them); `len(...)`
+    is banned only when its argument is frame-like, so ordinary `len(...)`
+    calls over plain lists (for example the sorted `attack_cat` category
+    list) are not false positives.
+    """
+    path = repo_root() / "src" / "nids" / "cleaning_report.py"
+    assert path.is_file(), "expected slice-5 module missing: src/nids/cleaning_report.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+
+    violations: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute) and node.attr == "shape":
+            violations.append(".shape")
+        elif isinstance(node, ast.Attribute) and node.attr in _FORBIDDEN_FRAME_METHODS:
+            violations.append(f".{node.attr}(...)")
+        elif (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "len"
+            and any(_is_frame_like_expression(arg) for arg in node.args)
+        ):
+            violations.append("len(<partition frame>)")
+
+    assert not violations, (
+        "cleaning_report.py recomputes a count directly from a partition frame "
+        f"(module: cleaning_report.py, finding(s)): {violations}"
+    )
