@@ -24,6 +24,11 @@ ALLOWED_LARGE_LITERALS: dict[str, frozenset[int]] = {
     # Decision "175_341, 82_332 and 45 are the only dataset row/column literals
     # permitted anywhere in src/nids").
     "src/nids/validation.py": frozenset({175_341, 82_332, 45}),
+    # AGENTS.md's fixed subsample row cap ("Gaussian Process, spectral
+    # clustering and t-SNE run on a stratified subsample of at most 10000
+    # rows"). Permitted only as `stratified_subsample`'s `max_rows` default;
+    # nowhere else in src/nids or tests.
+    "src/nids/sampling.py": frozenset({10_000}),
 }
 
 
@@ -201,8 +206,8 @@ def test_no_hardcoded_cleaned_partition_counts_in_slice_3_modules() -> None:
     names `cleaning.py`, `data.py`, and `test_cleaning.py` explicitly (data-
     cleaning spec — "No hardcoded cleaned-partition row counts") so a
     regression here is reported without cross-referencing the generic scan,
-    and `ALLOWED_LARGE_LITERALS` stays scoped to `validation.py`'s three
-    literals only -- no entry is added for any slice-3 module.
+    and no slice-3 module contributes an entry to `ALLOWED_LARGE_LITERALS`
+    (that dict also carries `sampling.py`'s row-cap literal, added in slice 4).
     """
     root = repo_root()
     targets = ("src/nids/cleaning.py", "src/nids/data.py", "tests/test_cleaning.py")
